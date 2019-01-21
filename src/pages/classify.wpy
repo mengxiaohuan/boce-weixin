@@ -1,0 +1,248 @@
+<template>
+  <view class="top_search">
+    <view class="search_read_only">
+      <navigator class="search_content" url="/pages/search">
+        <i class="iconfont icon-search"></i>
+        <view class="search_input">搜索商品</view>
+      </navigator>
+    </view>
+  </view>
+  <view class="classify">
+    <scroll-view class="classify_catetory" scroll-y scroll-with-animation="true">
+      <view class="name {{item.categoryId===categoryId? 'active':''}}" wx:for="{{rootcateList}}" wx:key="item" @tap="changeCate" data-code="{{item.categoryId}}">
+        {{item.categoryName}}
+      </view>
+    </scroll-view>
+    <!--二级分类-->
+    <view class="classify_detail" style="height:{{windowHeight-150}}rpx">
+      <view class="children" wx:for="{{rootcateList}}" wx:key="item" wx:if="{{item.categoryId===categoryId}}">
+       <navigator hover-class="none" class="children_item" wx:for="{{item.subList}}" wx:for-item="item" wx:key="index" url="/pages/search?cateCode={{item.categoryId}}&title={{item.categoryName}}">
+         {{item.categoryName}}
+       </navigator>
+      </view>
+    </view>
+    <!--一级分类下的商品-->
+    <!--<products :list.sync="childcateList"></products>-->
+    <!--<scroll-view class="classify_detail" scroll-y scroll-with-animation="true" style="height:{{windowHeight-50}}px">-->
+        <!--<view class="children">-->
+          <!--<navigator hover-class="none" class="children_item" wx:for="{{childcateList}}" wx:for-item="item" wx:key="index" url="/pages/search?cateCode={{item.secondCategory.code}}&title={{item.secondCategory.name}}">-->
+            <!--<image class="child_image" src="{{item.secondCategory.thumLogo}}"></image>-->
+            <!--<view class="child_name">{{item.secondCategory.name}}</view>-->
+          <!--</navigator>-->
+        <!--</view>-->
+    <!--</scroll-view>-->
+  </view>
+  <!--<bottomLoadMore :show.sync="showLoading" message="正在加载"></bottomLoadMore>-->
+
+</template>
+<script>
+
+import wepy from 'wepy';
+import api from '@/api/api';
+import ClassifyProduct from '../components/classify_product';
+import BottomLoadMore from "../components/common/bottomLoadMore";
+
+import {
+  SYSTEM_INFO,
+  SEL_CLASS_CODE
+} from '@/utils/constant';
+
+import tip from '@/utils/tip'
+
+export default class Classify extends wepy.page {
+  config = {
+    navigationBarTitleText: '分类',
+  };
+  components = {
+    products: ClassifyProduct,
+    bottomLoadMore: BottomLoadMore,
+  };
+
+  data = {
+    scrollTop: 100,
+    windowHeight: 0,
+    categoryId: '',
+    list: {},
+    //一级分类数据
+    rootcateList: {},
+    //二级三级分类数据
+    // childcateList: {},
+    //当前页面
+    currentPage: 1,
+    //总页数
+    page_total: 0,
+    //是否显示 底部loading
+    showLoading: true,
+    //防止重复加载
+    preventRepeatReuqest: false,
+  };
+
+  /**
+   * 获取子面板列表
+   * @param categoryId  大类ID
+   * @param loadMore    是否加载更多
+   * @param page        页码
+   * @param size        每页显示数量
+   * @returns {Promise<void>}
+   */
+  // async getChildCate(categoryId, loadMore, page, size) {
+  //   let pageIndex = page || 1;
+  //   let sizeIndex = size || 10;
+  //   let loadMoreData = loadMore || false;
+  //   const json = await api.categoryProductList(categoryId, pageIndex, sizeIndex);
+  //   if (json.data.stateCode == 0) {
+  //     this.page_total = Math.ceil(json.data.totalSize/sizeIndex);
+  //     if(loadMoreData) {
+  //       this.childcateList.push(...json.data.products);
+  //       this.showLoading = false;
+  //     }else {
+  //       this.childcateList = json.data.products;
+  //     }
+  //   } else {
+  //     tip.error(json.data.message);
+  //   }
+  //   this.$apply();
+  // }
+
+  /**
+   * 获取大类列表
+   * @returns {Promise<void>}
+   */
+  async getRootCateTopLevel() {
+    const json = await api.categoryList();
+    if (json.data.stateCode===0) {
+      this.rootcateList = json.data.data;
+      if (this.rootcateList.length > 0) {
+        var categoryId = this.rootcateList[0].categoryId;
+        this.categoryId = categoryId;
+        // this.getChildCate(categoryId);
+      }
+    }
+    this.$apply();
+  }
+
+  onLoad() {
+    let that = this;
+    // let systemInfo = wepy.getStorageSync(SYSTEM_INFO);
+    // this.windowHeight = systemInfo.windowHeight;
+    this.windowHeight = 750 * wepy.getSystemInfoSync().windowHeight / wepy.getSystemInfoSync().windowWidth;
+    this.$apply();
+
+  }
+
+  onShow() {
+    this.getRootCateTopLevel();
+  }
+
+  computed = {
+
+  }
+  methods = {
+    /**
+     * 切换大类加载子面板
+     * @param e
+     */
+    changeCate(e) {
+      let code = e.currentTarget.dataset.code;
+      this.currentPage = 1;
+      this.categoryId = code;
+      // this.getChildCate(code);
+    },
+    clickSub(categoryId){
+      wepy.navigateTo({
+        url:"pages/home"
+      });
+    },
+    onShareAppMessage: function (res) {
+      if (res.from === 'button') {
+        // 来自页面内转发按钮
+        console.log(res.target)
+      }
+      return {
+        title: this.navigationBarTitleText,
+        path: '/pages/classify',
+        success: function(res) {
+          // 转发成功
+        },
+        fail: function(res) {
+          // 转发失败
+        }
+      }
+    }
+  }
+  events = {
+
+  };
+
+  /**
+   * 底部加载更多
+   * @returns {boolean}
+   */
+  // onReachBottom() {
+  //   let that = this;
+  //   that.showLoading = true;
+  //   console.log(that.page_total + "===" + that.currentPage);
+  //   //判断总页数是否大于翻页数
+  //   if ((that.page_total) > that.currentPage) {
+  //     //防止重复加载
+  //     if (that.preventRepeatReuqest) {
+  //       return true;
+  //     }
+  //     that.preventRepeatReuqest = true;
+  //     that.currentPage++;
+  //     that.getChildCate(that.categoryId, true, that.currentPage);
+  //     that.preventRepeatReuqest = false;
+  //   } else {
+  //     that.showLoading = false;
+  //   }
+  // };
+}
+
+</script>
+<style lang="less">
+.search_read_only .search_content {
+  width: 100%;
+  height: 65rpx;
+}
+
+.classify {
+  display: flex;
+  .classify_catetory {
+    width: 200rpx;
+    z-index: 1;
+    .name {
+      text-align: center;
+      height: 100rpx;
+      line-height: 100rpx;
+      font-size: 28rpx;
+      color: #666;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+    .active {
+      border-left: 6rpx solid #ff6a3c;
+      background: #fff;
+      color: #ff6a3c;
+    }
+  }
+  .classify_detail {
+    z-index: 999;
+    background: #fff;
+    padding: 10px 10px 10px 30px;
+    width: 480rpx;
+
+    .children {
+      display: flex;
+      flex-wrap: wrap;
+      margin: 20rpx 0rpx;
+
+      .children_item {
+        height: 100rpx;
+        line-height: 100rpx;
+        margin: 0 30rpx;
+      }
+    }
+  }
+}
+</style>

@@ -1,0 +1,132 @@
+<style lang="less">
+  @import "./styles/base";
+  @import "./styles/icon";
+  @import "./styles/style";
+</style>
+<script>
+  import wepy from 'wepy';
+  import 'wepy-async-function';
+  import api from "@/api/api";
+  import {
+    TOKEN, LOGIN_STATE, TOKEN_EXPIRE, TOKEN_GENERATE_TIME
+  } from '@/utils/constant';
+
+  export default class extends wepy.app {
+    config = {
+      pages: [
+        'pages/home',
+        'pages/register',
+        'pages/register_protocol',
+        'pages/confirm_order',
+        'pages/address',
+        'pages/address_add',
+        'pages/home_detail',
+        'pages/authorize',
+        'pages/classify',
+        'pages/shop_cart',
+        'pages/info',
+        'pages/search',
+        'pages/wholesale',
+        'pages/order',
+        'pages/pay_success',
+        'pages/collection',
+        'pages/messages',
+        'pages/setting',
+        'pages/goods_detail',
+        'pages/order_detail',
+        'pages/logistics',
+        'pages/store',
+        'pages/store_desc',
+        'pages/login',
+        'pages/fund',
+        'pages/bind_account',
+        'pages/liquor',
+        'pages/pwd_search',
+        'pages/pwd_reset',
+        'pages/comment',
+        'pages/comment_add',
+        'pages/login_type',
+        'pages/bind_mobile',
+        'pages/order_refund',
+      ],
+      window: {
+        backgroundTextStyle: 'dark',
+        navigationBarBackgroundColor: '#FFFFFF',
+        navigationBarTitleText: 'WeChat',
+        navigationBarTextStyle: 'black',
+        enablePullDownRefresh: false,
+        backgroundColor: '#EFEFEF'
+
+      },
+      "tabBar": {
+        "color": "#999999",
+        "selectedColor": "#ff0b10",
+        "backgroundColor": "#ffffff",
+        "borderStyle": "black",
+        "list": [{
+          "pagePath": "pages/home",
+          "text": "首页",
+          "iconPath": "images/icon_home.png",
+          "selectedIconPath": "images/icon_home_active.png"
+        }, {
+          "pagePath": "pages/classify",
+          "text": "分类",
+          "iconPath": "images/icon_classify.png",
+          "selectedIconPath": "images/icon_classify_active.png"
+        }, {
+          "pagePath": "pages/shop_cart",
+          "text": "购物车",
+          "iconPath": "images/icon_shop_cart.png",
+          "selectedIconPath": "images/icon_shop_cart_active.png"
+        }, {
+          "pagePath": "pages/info",
+          "text": "我",
+          "iconPath": "images/icon_info.png",
+          "selectedIconPath": "images/icon_info_active.png"
+        }]
+      }
+    };
+
+    globalData = {};
+
+    constructor() {
+      super();
+      this.use('requestfix');
+      this.use('promisify');
+
+    }
+
+    async onLaunch(option) {
+      const token = wepy.getStorageSync(TOKEN);
+      const token_time = wepy.getStorageSync(TOKEN_GENERATE_TIME);
+      if (typeof token === 'string' && token.length > 0 && typeof token_time === 'number') {
+        let now = new Date().getTime();
+        if (now < token_time + TOKEN_EXPIRE) {
+          let json = await api.checkToken();
+          wepy.setStorageSync(LOGIN_STATE, json.data.stateCode === 0);
+          console.log('not get wechat code!');
+          return;
+        }
+      }
+
+      wepy.setStorageSync(LOGIN_STATE, false);
+      let res = await wepy.login();
+      // console.log(res);
+      console.log('get wechat code!');
+      if (res.code) {
+        let json = await api.wechatLogin(res.code);
+        if (json && json.data && json.data.stateCode === 0) {
+          // console.log(json.data);
+          wepy.setStorageSync(TOKEN, json.data.token);
+          wepy.setStorageSync(TOKEN_GENERATE_TIME, new Date().getTime());
+          let res = await api.checkToken();
+          // console.log(res);
+          console.log('save token!');
+          wepy.setStorageSync(LOGIN_STATE, res.data.stateCode === 0);
+        }
+      }
+    }
+
+  }
+
+</script>

@@ -1,0 +1,208 @@
+<template>
+  <view class="container">
+    <image src="../images/shop-liquor.jpg" mode="aspectFill" class="img"></image>
+    <searchReadonly :optionObj.sync="optionObj"></searchReadonly>
+
+    <!--热销商品-->
+    <view class="hot" wx:if="{{hotData.length > 0}}">
+      <view class="title">热销排行榜</view>
+      <shopGrid :list.sync="hotData"></shopGrid>
+    </view>
+
+    <!--商品列表-->
+    <view wx:if="{{list.length>0}}" class="product_list">
+      <filterBar @currentType.user="currentType"></filterBar>
+      <!--矩阵商品列表模块-->
+      <shopGridList :list.sync="list"></shopGridList>
+      <!--加载更多时动画-->
+      <bottomLoadMore :show.sync="showLoading" message="正在加载"></bottomLoadMore>
+    </view>
+    <view wx:else>
+    <!--暂无数据显示-->
+      <placeholder :show.sync="is_empty" message="暂无发现数据"></placeholder>
+    </view>
+
+  </view>
+</template>
+
+<script>
+  import wepy from 'wepy';
+  import api from '@/api/api';
+  import tip from '@/utils/tip'
+
+  import SearchReadonly from '@/components/search-readonly'
+  import ShopGrid from '@/components/shop_grid'
+  import FilterBar from "../components/filter_bar"
+  import ShopGridList from '@/components/shop_grid_list'
+  import BottomLoadMore from "../components/common/bottomLoadMore"
+  import Placeholder from "../components/common/placeholder"
+  import {SORT_DEFAULT, SORT_SALE_DESC, SORT_PRICE_DESC, SORT_PRICE_ASC} from "../utils/constant"
+
+  export default class Liquor extends wepy.page {
+    components = {
+      searchReadonly: SearchReadonly,
+      shopGrid: ShopGrid,
+      filterBar: FilterBar,
+      shopGridList: ShopGridList,
+      bottomLoadMore: BottomLoadMore,
+      placeholder: Placeholder
+    }
+    data = {
+      optionObj:{},
+      cateCode: '',
+      hotData: [],
+      hotSize: 5,
+      list:[],
+      showLoading: false,
+      is_empty: false,
+      //当前页面
+      currentPage: 1,
+      //总页数
+      pageTotal: 0,
+      //每页显示几条
+      pageSize:10,
+      sort:-1,
+      keyword: ""
+    }
+    onLoad(option) {
+      this.optionObj = option;
+      wepy.setNavigationBarTitle({
+        title: option.title
+      })
+      this.$apply();
+      this.loadHotData();
+      this.loadList();
+    }
+    //加载热销商品
+    async loadHotData(){
+      let json = await api.getHotProduct(this.hotSize);
+      if (json != null && json.data.stateCode == 0) {
+        if (json.data.products.length === 0) {
+          //暂无数据
+          this.is_empty = true;
+        }else {
+          this.hotData = json.data.products;
+        }
+      } else {
+        tip.error(json.data.message+"");
+      }
+      this.$apply();
+    }
+    //加载商品
+    async loadList(loadMoreData){
+      let key = this.keyword || null,
+        page = this.currentPage || 1,
+        sizeIndex = this.pageSize || 10,
+        sort = this.sort || null;
+
+      let json = await api.searchProduct(null,this.optionObj.zoneId,null,key, page, sizeIndex, sort);
+      if (json != null && json.data.stateCode == 0) {
+        this.page_total = Math.ceil(json.data.totalSize/sizeIndex);
+        if (json.data.products.length === 0) {
+          //暂无数据
+          this.is_empty = true;
+        }else {
+          if(loadMoreData){
+            this.list.push(...json.data.products);
+          }else {
+            this.list = json.data.products;
+          }
+        }
+      } else {
+        tip.error(json.data.message+"");
+      }
+      this.showLoading = false;
+      this.$apply();
+    }
+
+    computed = {}
+    methods = {
+      currentType(obj) {
+        var name = obj.name;
+        var type = obj.type;
+        if (name == "zonghe") {
+          this.sort = SORT_DEFAULT;
+        } else if (name == "sale") {
+          this.sort = SORT_SALE_DESC;
+        } else if (name == "price") {
+          if (type == "desc") {
+            this.sort = SORT_PRICE_DESC;
+          } else if (type == "asc") {
+            this.sort = SORT_PRICE_ASC;
+          }
+        } else if (name == "sku") {
+          this.skuval = type;
+        }
+        this.list = [];
+        this.is_empty = false;
+        this.showLoading = true;
+        this.loadList();
+      },
+      onShareAppMessage: function (res) {
+        if (res.from === 'button') {
+          // 来自页面内转发按钮
+          console.log(res.target)
+        }
+        return {
+          title: this.navigationBarTitleText,
+          path: '/pages/liquor',
+          success: function(res) {
+            // 转发成功
+          },
+          fail: function(res) {
+            // 转发失败
+          }
+        }
+      }
+    }
+    //加载更多
+    onReachBottom() {
+      let that = this;
+      that.showLoading = true;
+      //判断总页数是否大于翻页数
+      if ((that.page_total) > that.currentPage) {
+        //防止重复加载
+        if (that.preventRepeatReuqest) {
+          return true;
+        }
+        that.preventRepeatReuqest = true;
+        that.currentPage++;
+        that.loadList(true);
+        that.preventRepeatReuqest = false;
+      } else {
+        that.showLoading = false;
+      }
+    };
+  }
+</script>
+
+<style lang="less">
+
+  .container{
+    background: #f7f7f7;
+  }
+
+  .img{
+    width: 100%;
+    height: 348rpx;
+  }
+
+ .hot{
+   background: #fff;
+   margin-top: 20rpx;
+   margin: 20rpx 20rpx 0;
+
+   .title{
+     color: #de0000;
+     font-size: 34rpx;
+     height: 80rpx;
+     line-height: 80rpx;
+     margin-left: 20rpx;
+   }
+ }
+
+ .product_list{
+   padding: 0 20rpx;
+ }
+
+</style>

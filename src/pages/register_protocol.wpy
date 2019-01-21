@@ -1,0 +1,51 @@
+<template>
+  <view class="content">
+    <import src="../plugins/wxParse/wxParse.wxml" />
+    <template is="wxParse" data="{{wxParseData:article.nodes}}"/>
+  </view>
+
+</template>
+
+<script>
+  import wepy from 'wepy';
+  import api from '@/api/api';
+  import tip from '@/utils/tip';
+  import WxParse from "../plugins/wxParse/wxParse";
+
+  export default class RegisterProtocol extends wepy.page {
+    config = {
+      navigationBarTitleText: '注册协议',
+    };
+    components = {};
+
+    data = {
+      article: {},
+    };
+
+    async getProtocol() {
+      let json = await api.getProtocol();
+
+      if (json && json.data && json.data.stateCode === 0) {
+        this.article = json.data.protocol;
+        WxParse.wxParse('article', 'html', json.data.protocol, this, 20);
+        this.$apply();
+      }
+    }
+
+    onLoad() {
+      this.getProtocol();
+    };
+
+    computed = {};
+    methods = {};
+    events = {};
+  }
+</script>
+
+<style src="../plugins/wxParse/wxParse.wxss"></style>
+<style lang="less">
+.content {
+  padding: 40rpx 20rpx;
+  line-height: 150%;
+}
+</style>

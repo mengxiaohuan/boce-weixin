@@ -1,0 +1,166 @@
+<style lang="less">
+  .block {
+    background: #fff;
+  }
+
+  .list_item {
+    display: flex;
+    align-items: center;
+    border-top: 1px solid #efefef;
+    padding: 35rpx 20rpx;
+    .title {
+      margin-right: 20rpx;
+    }
+    .input {
+      flex: 1;
+      input {
+        color: #333;
+      }
+    }
+  }
+
+  .btn_box {
+    margin-top: 64rpx;
+    padding: 0 24rpx;
+  }
+
+</style>
+<template>
+  <form bindsubmit="formSubmit">
+    <view class="block">
+      <view class="list_item">
+        <view class="title">收货人姓名:</view>
+        <view class="input">
+          <input type="text" name="receiverName" value="{{address.name}}" />
+        </view>
+      </view>
+      <view class="list_item">
+        <view class="title">联系电话:</view>
+        <view class="input">
+          <input type="text" name="mobile" value="{{address.mobile}}"/>
+        </view>
+      </view>
+      <view class="list_item">
+        <view class="title">所在地区:</view>
+        <view class="input">
+          <view @tap="openAddressPicker">{{province ? province.name : '省'}} - {{city ? city.name : '市' }} - {{area ? area.name : '区' }}</view>
+          <areaPicker @areaArray.user="areaPickerArray"></areaPicker>
+        </view>
+      </view>
+      <view class="list_item">
+        <view class="title">详细地址:</view>
+        <view class="input">
+          <input type="text" name="addressDetail" value="{{address.homeAddress}}"/>
+        </view>
+      </view>
+    </view>
+    <view class="btn_box">
+      <button class="button type_red" formType="submit">保存</button>
+    </view>
+  </form>
+</template>
+<script>
+
+  import wepy from 'wepy';
+  import tip from '@/utils/tip';
+  import api from "@/api/api";
+  import AreaPicker from "../components/common/wepy-area-picker"
+
+  export default class AddressAdd extends wepy.page {
+
+    config = {
+      navigationBarTitleText: '添加地址',
+    };
+
+    data = {
+      province: '',
+      city: '',
+      area: '',
+      addressId: '',
+      address: {}
+    };
+
+    components = {
+      areaPicker: AreaPicker
+    };
+
+    async editAddress(address) {
+      let json = null;
+      if(this.addressId !== undefined) {
+        json = await api.editAddress(this.addressId, null, address.receiverName, address.mobile, address.addressDetail, this.province.code, this.city.code, this.area.code);
+      }else{
+        json = await api.addAddress(address.receiverName, address.mobile,  this.province.code, this.city.code, this.area.code, address.addressDetail);
+      }
+      if (json !== null && json.data.stateCode === 0) {
+        tip.success("保存成功！");
+        wepy.navigateBack({
+          delta: 1
+        })
+      } else {
+        tip.error(json.data.message);
+      }
+    }
+    methods = {
+      formSubmit(e) {
+        let receiverName = e.detail.value.receiverName;
+        let mobile = e.detail.value.mobile;
+        let addressDetail = e.detail.value.addressDetail;
+
+        if (receiverName.trim().length === 0) {
+          tip.alert("输入收件人姓名");
+          return false;
+        }
+
+        if (mobile.trim().length === 0) {
+          tip.alert("输入联系电话");
+          return false;
+
+        }
+
+        if (this.province === '' || this.area === '' || this.city === '') {
+          tip.alert('请选择所在地区');
+          return false;
+        }
+
+        if (addressDetail.trim().length === 0) {
+          tip.alert("输入详细地址");
+          return false;
+        }
+
+        this.editAddress(e.detail.value);
+      },
+      openAddressPicker() {
+        this.$invoke('areaPicker', 'openAddressPicker', this.province.code, this.city.code, this.area.code);
+      },
+      areaPickerArray(province, city, area) {
+        this.province = province;
+        this.city = city;
+        this.area = area;
+        this.$apply();
+      }
+    };
+
+    onLoad(option) {
+      this.addressId = option.addressId;
+    }
+
+    onShow() {
+      if(this.addressId !== undefined) this.getAddressById(this.addressId);
+    }
+
+    async getAddressById(addressId){
+      let json = await api.getAddressById(addressId);
+      if(json !== null && json.data.stateCode === 0){
+        let address = json.data.data;
+        this.address = address;
+        this.province = {name:address.provincialName || address.provincial, code:address.provincial};
+        this.city = {name:address.cityName || address.city, code:address.city};
+        this.area = {name: address.regionName || address.region, code:address.region};
+        this.$apply();
+      }else {
+        tip.error(json.data.message);
+      }
+    }
+  }
+
+</script>

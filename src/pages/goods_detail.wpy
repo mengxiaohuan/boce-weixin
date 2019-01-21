@@ -1,0 +1,1415 @@
+<template>
+  <view style="height:{{winHeight}}rpx;overflow:hidden">
+    <!--index.wxml-->
+    <view class="bid_top" wx:if="{{detail.productInfo.type===10}}">
+      <view class="bid_status">{{bidInfo.status}}</view>
+      <view class="bid_time_count" wx:if="{{bidInfo.status!=='已结束'}}">
+        <!--{{strD>=0?strD+"天":""}}{{strH}}小时{{strM}}分{{strS}}秒后{{bidInfo.status1}}-->
+        {{day>=0?day+"天":""}}{{hour}}小时{{minute}}分{{second}}秒后{{bidInfo.status1}}
+      </view>
+      <view class="bid_time_count" wx:if="{{bidInfo.status==='已结束'}}">--</view>
+    </view>
+    <swiper wx:if="{{detail.productInfo.pictures.length!==0}}" indicator-dots="true" autoplay="true" interval="5000" duration="500" indicator-active-color="#ffc452" indicator-color="#efefef" class="swiper">
+      <block wx:for="{{detail.productInfo.pictures}}" key="item" item="item" wx:key="key">
+        <swiper-item>
+          <image src="{{item.bigPictureUrl}}" data-src="{{item}}" class="slide-image" @error="imgerror({{index}})"/>
+        </swiper-item>
+      </block>
+    </swiper>
+    <image wx:else src="{{detail.productInfo.bigPicture}}" class="big_img" @error="imgerror()"/>
+    <view class="details-msg">
+      <view class="details-title">
+        <view class="detail-type">{{typeText[detail.productInfo.type + '']}}</view>
+        {{detail.productInfo.name}}
+      </view>
+      <view class="details_pinfo" wx:if="{{detail.productInfo.type!==10}}">
+        <text class="price">￥{{detail.productInfo.unitPrice_format}}</text>
+      </view>
+    </view>
+
+    <!-- 不是竞价商品 -->
+    <view class="order_num" wx:if="{{detail.productInfo.type!==10}}">
+      <view class="doc">
+        <text>成交量：</text>
+        <text class="num">{{detail.productInfo.buyTotalCount}}（{{detail.productInfo.unit}}）</text>
+      </view>
+      <view class="doc" wx:if="{{detail.productInfo.type===3}}"><!-- 预售商品 -->
+        <text>商品交付日期：</text>
+        <text class="num">{{detail.productInfo.ysEndTime}}</text>
+      </view>
+      <view class="doc" wx:if="{{detail.productInfo.type===3}}"><!-- 预售商品 -->
+        <text>补齐货款日期：</text>
+        <text class="num">{{detail.productInfo.wkEndTime}}</text>
+      </view>
+      <view class="doc" wx:if="{{detail.productInfo.type===3}}"><!-- 预售商品 -->
+        <text>最小订货量：</text>
+        <text class="num">{{detail.productInfo.minOrderQuan}}</text>
+      </view>
+      <view class="doc" wx:if="{{detail.productInfo.type===3}}"><!-- 预售商品 -->
+        <text>批量增量：</text>
+        <text class="num">{{detail.productInfo.quantityInc}}</text>
+      </view>
+      <view class="doc">
+        <text>仓库：</text>
+        <text class="num">{{detail.selfAddressRel.addressName}}</text>
+        <text>[{{detail.selfAddressRel.address}}]</text>
+      </view>
+    </view>
+
+    <!-- 竞价商品 -->
+    <view class="order_num" wx:if="{{detail.productInfo.type===10}}">
+      <view class="doc">
+        <text>起拍价：</text>
+        <text class="num">￥{{detail.productInfo.singlePri_format}}</text>
+      </view>
+      <view class="doc">
+        <text>加价幅度：</text>
+        <text class="num">￥{{detail.productInfo.range_format}}</text>
+      </view>
+      <view class="doc">
+        <text>最小竞拍数量：</text>
+        <text class="num">{{detail.productInfo.minOrderQuan}}{{detail.productInfo.unit}}</text>
+      </view>
+      <view class="doc">
+        <text>最小竞拍单位：</text>
+        <text class="num">{{detail.productInfo.quantityInc}}{{detail.productInfo.unit}}</text>
+      </view>
+      <view class="doc">
+        <text>保证金：</text>
+        <text class="num" wx:if="{{detail.productInfo.bondType==='1'}}">￥{{detail.productInfo.bondPrice_format}}</text>
+        <text class="num" wx:if="{{detail.productInfo.bondType==='0'}}">{{detail.productInfo.bondbili}}%</text>
+      </view>
+      <view class="doc">
+        <text>开始时间：</text>
+        <text class="num">{{detail.productInfo.bailStart}}</text>
+      </view>
+      <view class="doc">
+        <text>结束时间：</text>
+        <text class="num">{{detail.productInfo.bailEnd}}</text>
+      </view>
+    </view>
+    <view class="bid_log" wx:if="{{detail.productInfo.type===10}}">
+      <view class="block">
+        <view class="block_title">出价记录</view>
+      </view>
+      <view class="log_item {{item.index===1?'bid_1st':''}}" wx:for="{{bidInfo.log}}" wx:key="item">
+        <text class="item_icon">{{item.index}}</text>
+        <text class="item_price">{{item.payPrice}}元</text>
+        <text class="item_num">{{item.num}}{{detail.productInfo.unit}}</text>
+      </view>
+    </view>
+
+    <!--评价-->
+    <view class="block">
+      <view class="block_title">
+        商品评价
+        <view class="totalRate fz26" wx:if="{{commentList.length > 0}}">好评{{goodCount*100/(goodCount+midCount+badCount)}}%</view>
+        <view class="total fz26" wx:if="{{commentList.length > 0}}" @tap="moreComment({{detail.productInfo.productId}},'all')">共{{goodCount+midCount+badCount}}条评论></view>
+      </view>
+      <view class="commentType" wx:if="{{commentList.length > 0}}">
+        <view class="item fz22" @tap="moreComment({{detail.productInfo.productId}},'good')">好评({{goodCount}})</view>
+        <view class="item fz22" @tap="moreComment({{detail.productInfo.productId}},'mid')">中评({{midCount}})</view>
+        <view class="item fz22" @tap="moreComment({{detail.productInfo.productId}},'bad')">差评({{badCount}})</view>
+      </view>
+    </view>
+    <view class="commont_box">
+      <commentList :list.sync="commentList"></commentList>
+      <view class="more">
+        <view class="allComment" @tap="moreComment({{detail.productInfo.productId}},'all')">查看全部评价</view>
+      </view>
+    </view>
+
+    <view class="block">
+      <view class="block_title">商品详情</view>
+      <view class="detail_attributes">
+        <view class="attributes_item" wx:for="{{detail.productAttributes}}" key="item" item="item" wx:key="key" wx:if="{{tool.trim(item.value).length!==0}}">
+          <view class="detail_key">{{item.name}}</view>
+          <view class="detail_value">{{item.value}}</view>
+        </view>
+      </view>
+    </view>
+    <view class="html_detail">
+      <rich-text nodes="{{artical}}"></rich-text>
+    </view>
+    <view class="bottom_space"></view>
+    <view class="detail-bottom">
+      <view class="bottom-box" wx:if="{{detail.productInfo.type!==10}}">
+        <view class="item" @tap="cartPage">
+          <i class="iconfont icon-gouwuchekong"></i>
+          <view class="doc">购物车</view>
+        </view>
+
+        <view class="sy-bottom btn_cart" @tap="takeCart">加入购物车</view>
+        <view class="sy-bottom btn_order" @tap="takeOrder">立即购买</view>
+      </view>
+      <view class="bottom-box" wx:if="{{detail.productInfo.type===10&&bidInfo.status==='拍卖中'}}">
+        <view class="sy-bottom btn_order" style="width: 100%" @tap="takeOrder">立即出价</view>
+      </view>
+    </view>
+    <view class="over_model {{hidden?'hidden':''}}"></view>
+    <view class="panle_model {{hidden?'hidden':''}}" animation="{{animationData}}" wx:if="{{detail.productInfo.type!==10}}">
+      <view class="model_content">
+        <view class="head_box">
+          <view class="img_wrap">
+            <image class="goods_img" src="{{detail.productInfo.smallPicture}}" @error="imgerror()"/>
+          </view>
+          <view class="product_wrap">
+            <view class="product_name">{{detail.productInfo.name}}</view>
+            <view class="price">￥ {{detail.productInfo.unitPrice_format}}</view>
+          </view>
+        </view>
+        <scroll-view scroll-y="true" style="height:400rpx">
+
+          <view class="num_box">
+            <view class="title">数量</view>
+            <view class="buy-num">
+              <view class="jian-btn {{item.number==1? 'disabled' : ''}}" catchtap="jianBtnTap" data-index="{{index}}">-</view>
+              <input type="number" bindinput="bindOrderNumInput" value="{{orderNum}}" bindblur="checkOrderNum"/>
+              <view class="jia-btn {{item.number==10? 'disabled' : ''}}" catchtap="jiaBtnTap" data-index="{{index}}">+</view>
+            </view>
+          </view>
+          <view class="buy_quantity">库存：{{detail.productInfo.quantity}}{{detail.productInfo.unit}}</view>
+        </scroll-view>
+        <view class="colse_model" @tap="closeModel"><i class="iconfont icon-close"></i></view>
+      </view>
+      <view class="comfire_btn" @tap.stop="confirmTake">确定</view>
+    </view>
+    <!--竞拍确认-->
+    <view class="panle_model {{hidden?'hidden':''}}" animation="{{animationData}}" wx:if="{{detail.productInfo.type===10}}">
+      <view class="colse_model" @tap="closeModel"><i class="iconfont icon-close"></i></view>
+      <view class="model_content" style="margin-top: 50rpx">
+        <view class="model_info">
+          <view class="model_label">单价：</view>
+          <view class="model_input">
+            <input type="number" value="{{bidInfo.bidPrice}}" bindinput="inputBidPrice" bindblur="checkBidPrice"/>
+            元/{{detail.productInfo.unit}}
+          </view>
+        </view>
+        <view class="model_info">
+          <view class="model_label">竞拍数量：</view>
+          <view class="model_input">
+            <input type="number" value="{{bidInfo.bidNum}}" bindinput="inputBidNum" bindblur="checkBidNum"/>{{detail.productInfo.unit}}
+          </view>
+        </view>
+        <view class="bid_quantity">库存：{{detail.productInfo.quantity}}{{detail.productInfo.unit}}</view>
+        <view class="model_info">
+          <view class="model_label">竞拍总价：</view>
+          <view class="model_input">￥{{bidInfo.sum_format}}</view>
+        </view>
+        <view class="model_info">
+          <view class="model_label">保证金：</view>
+          <view class="model_input" wx:if="{{detail.productInfo.bondType==='0'}}">
+            ￥{{bidInfo.sum_bondbili_format}}
+            <!--{{bidInfo.sum*detail.productInfo.bondbili/100}}-->
+          </view>
+          <view class="model_input" wx:if="{{detail.productInfo.bondType==='1'}}">
+            ￥{{bidInfo.sum_bondPrice_format}}
+            <!--{{bidInfo.bidNum*detail.productInfo.bondPrice}}-->
+          </view>
+        </view>
+        <view class="model_info">
+          <view class="model_label">云商支付密码：</view>
+          <view class="model_input">
+            <input type="password" value="{{bidInfo.bestPass}}" bindinput="inputBestPass"/>
+          </view>
+        </view>
+      </view>
+      <view class="pay_err">{{bidInfo.err}}</view>
+      <view class="bid_btn" @tap.stop="bidConfirm">立即出价</view>
+    </view>
+    <!---->
+
+  </view>
+</template>
+<script>
+import wepy from 'wepy'
+import {
+  SYSTEM_INFO,
+} from '@/utils/constant';
+import tip from '@/utils/tip';
+import util from '@/utils/util';
+import api from '@/api/api';
+import tool from '../utils/tools.wxs';
+import CommentList from '@/components/comment_list'
+import {LOGIN_STATE, COMMENT_ALL, COMMENT_GOOD, COMMENT_MID, COMMENT_BAD, USER_ID} from '../utils/constant'
+
+export default class goodsDetail extends wepy.page {
+  config = {
+    navigationBarTitleText: '商品详情'
+  };
+
+  wxs = {
+    tool: tool,
+  };
+
+  data = {
+    winWidth: 0,
+    winHeight: '100%',
+    goodsId: '',
+    detail: {},
+    good_bigimg: [],
+    //订单活动开始时间（格式yy-mm-dd 或者 yy/mm/dd ）
+    // startTime: "2017-07-15 16:00:00",
+    startTime: "",
+    //订单活动结束时间（格式yy-mm-dd 或者 yy/mm/dd ）
+    // endTime: "2017-07-21 16:04:00",
+    endTime: "",
+    hidden: true,
+    //动画效果
+    animationData: "",
+    //购买方式:1-加购物车,2-立即购买
+    orderType: 1,
+    //购买数量
+    orderNum: 1,
+    //是否收藏
+    isFavorite: false,
+    isValidDate: true,
+    canOrder: true, //是否能下单
+    purchasetype: 1, //1-正常购买;2-补货
+    purchaseText: "立即购买",
+    special: 0, ////0-正常入库;1-特价专区和换货专区,
+
+    artical: '',
+    bidInfo: {
+      bidNum: 0,
+      bidPrice: 0,
+      sum: 0,
+      interval:{}
+    },
+    //倒计时
+    day: 0,
+    hour: 0,
+    minute: 0,
+    second: 0,
+    totalDay: 0,
+    interval: {},
+    endTxt:"\n00:00:00",
+    // 商品类型
+    typeText: {
+      '0': '挂牌',
+      '3': '预售',
+      '10': '竞拍',
+    },
+
+    // 商品评价
+    commentList: '',
+    commentSize: 3,//评价条数
+    goodCount:0,//好评数
+    midCount:0,//中评数
+    badCount:0,//差评数
+
+    isSelfStore: false,//是否为登录人自己的商品
+  };
+
+  components = {
+    commentList: CommentList
+  };
+
+  onLoad(option) {
+    let that = this;
+    this.orderNum = 0;
+    this.purchasetype = 1;
+    this.isFavorite = false;
+    this.isValidDate = true;
+    this.canOrder = true;
+    this.hidden = true;
+    this.winHeight = "100%";
+    that.detail = {};
+    that.$apply();
+    //接收上一个页面传过来的参数
+    that.goodsId = option.id;
+    that.getListedProductDetail();
+    // that.getAuctionBidInfo();
+
+    setTimeout(()=>{
+      if(that.detail.productInfo === undefined || !that.detail.productInfo.type) return;
+      if(that.detail.productInfo.type===10 && that.bidInfo.status==='拍卖中'){
+        that.getBidInfo();
+      }
+    },10000);
+
+    //------
+    this.day = 0;
+    this.hour = 0;
+    this.minute = 0;
+    this.second = 0;
+    this.totalDay = 0;
+    this.startTime = "";
+    this.endTime = "";
+    clearInterval(this.interval);
+  //  --------
+
+    //商品评价
+    this.loadCommentList();
+  }
+  onShow() {
+    // this.goodsIsFavorite();
+    //创建动画
+    var animation = wx.createAnimation({
+      transformOrigin: "50% 50%",
+      duration: 200,
+      timingFunction: "linear",
+      delay: 0
+    })
+    this.animation = animation;
+  }
+
+  //详情
+  async getListedProductDetail() {
+    clearInterval(this.interval);
+    let that = this;
+    const json = await api.listedProductDetail(that.goodsId);
+    if(json !== null && json.data.stateCode === 0){
+      that.detail = json.data.data;
+      that.artical = util.richTextImg(that.detail.productInfo.description);
+      that.detail.productInfo.pictures.unshift({
+        'bigPictureUrl': that.detail.productInfo.bigPicture,
+        'smallPictureUrl': that.detail.productInfo.bigPicture
+      });
+
+      let pro_info = that.detail.productInfo;
+      //金额格式化
+      pro_info.unitPrice_format= util.numberFormat(pro_info.unitPrice, 2, '.', ',');
+      pro_info.singlePri_format= util.numberFormat(pro_info.singlePri, 2, '.', ',');
+      pro_info.range_format= util.numberFormat(pro_info.range, 2, '.', ',');
+      pro_info.bondPrice_format= util.numberFormat(pro_info.bondPrice, 2, '.', ',');
+      //获取系统时间
+      if(pro_info.type===10){
+        let json = await api.serverTime();
+        let server_time = json.data.data;
+        if(!server_time) return;
+
+        that.getAuctionBidInfo();
+        that.bidInfo.date = server_time;
+        that.bidInfo.start = new Date(pro_info.bailStart.replace(/-/g,'/')).getTime();
+        that.bidInfo.end = new Date(pro_info.bailEnd.replace(/-/g,'/')).getTime();
+
+        if(server_time < that.bidInfo.start){
+          that.bidInfo.status = '即将开始';
+          that.bidInfo.status1 = '开始';
+          that.initTimer(server_time, that.bidInfo.start);
+        }else if (server_time > that.bidInfo.end) {
+          that.bidInfo.status = '已结束';
+        }else{
+          that.bidInfo.status = '拍卖中';
+          that.bidInfo.status1 = '结束';
+          that.initTimer(server_time, that.bidInfo.end);
+        }
+      }
+      //检验商品是否为自己商铺的
+      this.checkSelfStore();
+
+      that.$apply();
+    }else{
+      tip.error(json.data.message);
+    }
+  }
+
+  //竞拍记录
+  async getAuctionBidInfo() {
+    let that = this;
+    const json = await api.auctionBidInfo(that.goodsId);
+    that.bidInfo.log = json.data.data.auctionBidInfos;
+    that.$apply();
+  }
+  //竞拍出价
+  async pay() {
+    let that = this;
+    const json = await api.auctionBid(that.goodsId, that.bidInfo.bidPrice, that.bidInfo.bidNum, that.bidInfo.bestPass);
+    if(json.data.stateCode===0){
+      wepy.showToast({
+        title: '支付成功',
+        icon: 'success',
+        duration: 3000
+      });
+
+      setTimeout(()=>{
+        this.hidden = true;
+    },1000)
+    }else{
+      that.bidInfo.err = json.data.message
+    }
+
+    that.getListedProductDetail();
+    that.getAuctionBidInfo();
+    that.$apply()
+  }
+//  ------------------------------
+  initTimer(start, end) {
+    let days = (end - start) / 1000 / 3600 / 24;
+
+    if(days<0) {
+      //竞拍结束
+      this.bidInfo.status='已结束';
+      clearInterval(this.interval);
+      clearInterval(this.bidInfo.interval);
+      return;
+    }
+
+    let day = Math.floor(days);
+    let hours = (days - day) * 24;
+    let hour = Math.floor(hours);
+    let minutes = (hours - hour) * 60;
+    let minute = Math.floor(minutes);
+    let seconds = (minutes - minute) * 60;
+    let second = Math.floor(seconds);
+
+    //赋值
+    this.day = day;
+    //this.hour = day * 24 + hour;
+    this.hour = hour;
+    this.minute = minute;
+    this.second = second;
+
+    this.interval = setInterval(() => {
+
+      if ((--this.second) < 0) {
+        this.minute--;
+        this.second = 59;
+        this.$apply();
+      }
+
+      if (this.minute < 0) {
+        this.hour--;
+        this.minute = 59;
+        this.$apply();
+      }
+      if (this.hour < 0) {
+        this.day--;
+        this.day = 23;
+        this.$apply();
+      }
+      if (this.day < 0) {
+        this.hour = 0;
+        this.minute = 0;
+        this.second = 0;
+        this.bidInfo.status='已结束';
+        this.$apply();
+        clearInterval(this.interval);
+      }
+      this.$apply();
+    }, 1000);
+
+    this.$apply();
+  }
+
+  getBidInfo(){
+    let u=0;
+    this.bidInfo.interval = setInterval(()=>{
+      this.getListedProductDetail();
+      // this.getAuctionBidInfo();
+      u++;
+    },10000);
+  }
+
+  computed = {
+    strD() {
+      return this.day;
+    },
+    strH() {
+      return this.hour < 10 ? "0" + this.hour : this.hour;
+    },
+    strM() {
+      return this.minute < 10 ? "0" + this.minute : this.minute;
+    },
+    strS() {
+      return this.second < 10 ? "0" + this.second : this.second;
+    },
+    total() {
+      return (this.hour * 60 * 60) + (this.minute * 60) + this.second;
+    },
+
+  }
+  events = {}
+
+  async showConfirmData() {
+    this.orderNum = this.detail.productInfo.minOrderQuan;
+    this.animation.height('783rpx').step();
+    this.setData({
+      animationData: this.animation.export()
+    })
+    setTimeout(() => {
+      this.hidden = false;
+      let systemInfo = wepy.getStorageSync(SYSTEM_INFO);
+      this.winHeight = systemInfo.windowHeight;
+      this.$apply();
+    }, 100)
+  }
+
+  checkSelfStore(){
+    let userId = wepy.getStorageSync(USER_ID),
+      storeId = this.detail.productInfo.storeId;
+    if(userId === storeId){
+      this.isSelfStore = true;
+      return;
+    }
+    this.isSelfStore = false;
+  }
+
+  //加入购物车之后
+  afterAddCart(){
+    if (this.orderType === 1) {//加入购物车
+      let cartInfo = wepy.getStorageSync('cart') || {};
+      const pid = this.detail.productInfo.productId;
+      if (pid in cartInfo) {
+        cartInfo[pid] += this.orderNum;
+      } else {
+        cartInfo[pid] = this.orderNum;
+      }
+      wepy.setStorageSync('cart', cartInfo);
+      wepy.showToast({
+        title: '成功加入购物车',
+        icon: 'success',
+        duration: 3000
+      });
+      setTimeout(()=>{
+        this.hidden = true;
+      },1000);
+    } else if (this.orderType == 2) {//立即购买
+      let cartInfo = wepy.getStorageSync('cart') || {};
+      const pids = this.detail.productInfo.productId;
+      if (pids in cartInfo) {
+        cartInfo[pids] += this.orderNum;
+      } else {
+        cartInfo[pids] = this.orderNum;
+      }
+      wepy.setStorageSync('cart', cartInfo);
+      //购买，跳转到确认订单页
+      let order = {},
+        store = {};
+      order[this.detail.productInfo.productId] = this.orderNum;
+      store[this.detail.productInfo.storeId] = '';
+      wepy.navigateTo({
+        url: "/pages/confirm_order?products=" + JSON.stringify(order) + "&stores=" + JSON.stringify(store)
+      });
+    }
+  }
+
+  methods = {
+    imgerror(index){
+      if(index !== undefined && index !== null && index !== '') {
+        this.detail.productInfo.pictures[index].bigPictureUrl = '/images/default.png';
+      }else {
+        this.detail.productInfo.smallPicture = '/images/default.png';
+      }
+    },
+
+    // issus : https://mp.weixin.qq.com/debug/wxadoc/dev/api/ui-navigate.html#wxrelaunchobject
+    homePage() {
+      wepy.switchTab({
+        url: '/pages/home'
+      })
+      // wx.switchTab({
+      //   url: '/pages/home'
+      // })
+    },
+    cartPage() {
+      wepy.switchTab({
+        url: '/pages/shop_cart'
+      })
+    },
+    moreComment(productId, commentType){
+      if(commentType === 'all'){
+        commentType = COMMENT_ALL;
+      }else if(commentType === 'good'){
+        commentType = COMMENT_GOOD
+      }else if(commentType === 'mid'){
+        commentType = COMMENT_MID;
+      }else if(commentType === 'bad'){
+        commentType = COMMENT_BAD;
+      }
+
+      wepy.navigateTo({
+        url:'/pages/comment?productId='+productId+'&commentType='+commentType
+      });
+    },
+    previewImage(e) {
+      let current = e.target.dataset.src;
+      let imageArry = [];
+      let obj = this.detail.photoList;
+      Object.keys(obj).forEach((item) => {
+        imageArry.push(obj[item].photo)
+      });
+      wx.previewImage({
+        current: current, // 当前显示图片的http链接
+        urls: imageArry, // 需要预览的图片http链接列表
+      })
+    },
+    bindOrderNumInput(e) {
+      this.orderNum = parseInt(e.detail.value);
+    },
+    checkOrderNum(e){
+      this.orderNum = parseInt(e.detail.value);
+      if(this.orderNum < this.detail.productInfo.minOrderQuan){
+        this.orderNum = this.detail.productInfo.minOrderQuan;
+      }
+      if(this.orderNum > this.detail.productInfo.quantity){
+        this.orderNum = Math.floor(this.detail.productInfo.quantity/this.detail.productInfo.quantityInc)*this.detail.productInfo.quantityInc;
+      }
+      this.orderNum = this.detail.productInfo.minOrderQuan + Math.floor((this.orderNum - this.detail.productInfo.minOrderQuan)/this.detail.productInfo.quantityInc)*this.detail.productInfo.quantityInc;
+    },
+    inputBidPrice(e) {
+      this.bidInfo.bidPrice = parseInt(e.detail.value);
+      if(this.bidInfo.bidPrice||this.bidInfo.bidNum){
+        this.bidInfo.sum = this.bidInfo.bidPrice*this.bidInfo.bidNum;
+        this.bidInfo.sum = null ? 0 : this.bidInfo.sum;
+        this.bidInfo.sum_format = util.numberFormat(this.bidInfo.sum);
+        this.bidInfo.sum_bondbili_format = util.numberFormat(this.bidInfo.sum*this.detail.productInfo.bondbili/100);
+        this.bidInfo.sum_bondPrice_format = util.numberFormat(this.bidInfo.bidNum*this.detail.productInfo.bondPrice);
+      }
+    },
+    inputBidNum(e) {
+      this.bidInfo.bidNum = parseInt(e.detail.value);
+      if(this.bidInfo.bidPrice||this.bidInfo.bidNum){
+        this.bidInfo.sum = this.bidInfo.bidPrice*this.bidInfo.bidNum;
+        this.bidInfo.sum = null ? 0 : this.bidInfo.sum;
+        this.bidInfo.sum_format = util.numberFormat(this.bidInfo.sum);
+        this.bidInfo.sum_bondbili_format = util.numberFormat(this.bidInfo.sum*this.detail.productInfo.bondbili/100);
+        this.bidInfo.sum_bondPrice_format = util.numberFormat(this.bidInfo.bidNum*this.detail.productInfo.bondPrice);
+      }
+    },
+    checkBidPrice(e){
+      this.bidInfo.bidPrice = parseInt(e.detail.value);
+      if(this.bidInfo.bidPrice < this.detail.productInfo.singlePri){
+        this.bidInfo.bidPrice = this.detail.productInfo.singlePri;
+      }
+      this.bidInfo.bidPrice = this.detail.productInfo.singlePri + Math.floor((this.bidInfo.bidPrice - this.detail.productInfo.singlePri)/this.detail.productInfo.range)*this.detail.productInfo.range
+    },
+    checkBidNum(e){
+      this.bidInfo.bidNum = parseInt(e.detail.value);
+      if(this.bidInfo.bidNum < this.detail.productInfo.minOrderQuan){
+        this.bidInfo.bidNum = this.detail.productInfo.minOrderQuan;
+      }
+      if(this.bidInfo.bidNum > this.detail.productInfo.quantity){
+        this.bidInfo.bidNum = Math.floor(this.detail.productInfo.quantity/this.detail.productInfo.quantityInc)*this.detail.productInfo.quantityInc;
+      }
+      this.bidInfo.bidNum = this.detail.productInfo.minOrderQuan + Math.floor((this.bidInfo.bidNum - this.detail.productInfo.minOrderQuan)/this.detail.productInfo.quantityInc)*this.detail.productInfo.quantityInc;
+    },
+    inputBestPass(e) {
+      this.bidInfo.bestPass = e.detail.value;
+    },
+    takeOrder() {
+      if(this.isSelfStore){
+        tip.error("不能购买自己的");
+        return;
+      }
+
+      if (!this.canOrder) {
+        return;
+      }
+      this.bidInfo.err = '';
+      this.showConfirmData();
+      this.orderType = 2;
+      //this.doTakeOrder();
+    },
+    takeCart() {
+      if(this.isSelfStore){
+        tip.error("不能购买自己的");
+        return;
+      }
+
+      this.showConfirmData();
+      this.orderType = 1;
+    },
+    takeFavorite() {
+      if (this.isFavorite == true) {
+        this.goodsUnFavorite();
+      } else {
+        this.goodsFavorite();
+      }
+    },
+    closeModel() {
+      this.winHeight = "100%";
+      this.animation.height(0).step();
+      this.setData({
+        animationData: this.animation.export()
+      })
+      setTimeout(() => {
+        this.hidden = true;
+        this.$apply();
+      }, 100)
+    },
+    async confirmTake() { //确定购物车或者直接购买
+      let isLogin = false;
+      const login = wepy.getStorageSync(LOGIN_STATE);
+      if (typeof login === 'boolean' && login) isLogin = true;
+
+      if(!isLogin){
+        wepy.navigateTo({url: '/pages/login_type'});
+        return;
+      }
+
+      let selfAddressRel = this.detail.selfAddressRel || "",
+        self = '___self';
+      if(selfAddressRel != ""){
+        self = this.detail.selfAddressRel.address+"111_"+this.detail.selfAddressRel.selfAddressId+"_"+this.detail.selfAddressRel.quantity+"_self"
+      }
+
+      const json = await api.addCartProduct(this.goodsId,this.orderNum,this.orderType,this.detail.productInfo.unitPrice,this.detail.productInfo.name,self);
+      if(json.data.stateCode===0){
+        this.afterAddCart();
+      }else{
+        tip.error(json.data.message);
+      }
+    },
+    jiaBtnTap(e) {
+      if(this.orderNum < this.detail.productInfo.quantity){
+        this.orderNum+=this.detail.productInfo.quantityInc;
+      }
+    },
+    jianBtnTap() {
+      if (this.orderNum > this.detail.productInfo.minOrderQuan) {
+        this.orderNum-=this.detail.productInfo.quantityInc;
+      }
+    },
+    bidConfirm(){
+      this.pay()
+    },
+    selAttr(e) {
+      var id = e.currentTarget.dataset.id;
+      var nameid = e.currentTarget.dataset.nameid;
+      var index = e.currentTarget.dataset.index;
+      for (var i = 0; i < this.detail.goodsSkuNameList.length; i++) {
+        var skuValList = this.detail.goodsSkuNameList[i].skuValList;
+        for (var j = 0; j < skuValList.length; j++) {
+          var skuVal = skuValList[j];
+          if (skuVal.skuNameId == nameid) {
+            skuVal.current = false;
+            if (skuVal.skuValId == id) {
+              skuVal.current = true;
+              this.detail.goodsSkuValIds[index] = id;
+              for (var k = 0; k < this.detail.goodsSkuList.length; k++) {
+                var skuValIds = JSON.parse(this.detail.goodsSkuList[k].skuValIds).toArray;
+                if ("[" + this.detail.goodsSkuValIds.toString() + "]" === this.detail.goodsSkuList[k].skuValIds) {
+                  this.detail.stockNum = this.detail.goodsSkuList[k].stockNum;
+                  this.detail.price = this.detail.goodsSkuList[k].price;
+                  this.$apply();
+                  break;
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    onShareAppMessage: function(res) {
+      if (res.from === 'button') {
+        // 来自页面内转发按钮
+      }
+      return {
+        title: this.detail.name,
+        path: '/pages/goods_detail?id=' + this.goodsId,
+      }
+    },
+
+  }
+  onUnload() {
+    this.detail.productInfo.type='';
+    clearInterval(this.interval);
+    clearInterval(this.bidInfo.interval);
+  }
+
+  onHide() {
+    this.detail.productInfo.type='';
+    clearInterval(this.interval);
+    clearInterval(this.bidInfo.interval);
+  }
+
+  async loadCommentList(){
+    let size = this.commentSize || 3;
+    let json = await api.getCommentList(this.goodsId, 'init', size, null, null, COMMENT_ALL);
+    if(json != null && json.data.stateCode == 0){
+      this.goodCount = json.data.goodCount;
+      this.midCount = json.data.midCount;
+      this.badCount = json.data.badCount;
+      this.commentList = json.data.data;
+    }
+    this.$apply();
+  }
+}
+
+</script>
+
+<style lang="less">
+.swiper {
+  height: 662rpx;
+}
+
+.slide-image {
+  width: 100%;
+  height: 100%;
+}
+.big_img{
+  width: 750rpx;
+  height: 750rpx;
+}
+.details-msg {
+  border-top: 1px solid #ededed;
+  padding: 30rpx 30rpx;
+  background: #fff;
+  margin-bottom:15rpx;
+  .details-title {
+    overflow: hidden;
+    width: 100%;
+    box-sizing: border-box;
+    position: relative;
+    font-size: 30rpx;
+    color: #333;
+    .detail-type {
+      display: inline;
+      color: #f00;
+      border-radius: 20%;
+      border: 1px solid #f00;
+      font-size: 25rpx;
+      margin-right: 10rpx;
+    }
+  }
+  .bid_count{
+    font-size: 26rpx;
+    text{
+      color:#ff0000;
+    }
+  }
+  .details-introduction {
+    color: #999;
+    font-size: 28rpx;
+    line-height: 40rpx;
+    margin-top: 20rpx;
+  }
+  .details_pinfo {
+    padding: 20rpx 0;
+    position: relative;
+    display: flex;
+    align-items: center;
+    .price {
+      color: #f73c3c;
+      font-size: 45rpx;
+    }
+    .other-price {
+      font-size: 28rpx;
+      padding-left: 40rpx
+    }
+    .share-box {
+      text-align: center;
+      font-size: 20rpx;
+      padding-left: 50rpx;
+      flex: 1;
+    }
+    .icon-share {
+      display: block;
+      padding-bottom: 5rpx;
+      font-size: 40rpx;
+    }
+    .baoyou {
+      color: #808080;
+      font-size: 28rpx;
+      margin-top: 20rpx;
+    }
+    .order_time {
+      position: absolute;
+      right: 170rpx;
+      top: 0rpx;
+    }
+  }
+}
+
+.order_num {
+  background: #fff;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 13rpx;
+  border-top: 1px solid #efefef;
+  border-bottom: 1px solid #efefef;
+
+  .doc {
+    color: #808080;
+    border-bottom:1px solid #efefef;
+    line-height:85rpx;
+    padding:0 30rpx;
+    .num {
+        margin: 0 15rpx 0 25rpx;
+        color: #000;
+      }
+  }
+}
+
+.block {
+  padding: 27rpx 0;
+  background: #fff;
+
+  .block_title {
+    color: #000;
+    height: 30rpx;
+    line-height: 30rpx;
+    border-left: 6px solid #f73c3c;
+    padding-left: 20rpx;
+
+    .totalRate{
+      padding-left: 2prpx;
+      margin: -28rpx 0 0 140rpx;
+      color: #f73c3c;
+    }
+
+    .total{
+      margin: -28rpx 20rpx 0 0;
+      float: right;
+    }
+  }
+
+  .commentType{
+    height: 80rpx;
+    margin-top: 30rpx;
+    border-top: 1px solid #eee;
+
+    .item{
+      background: #fbf1f0;
+      padding: 7rpx 15rpx;
+      float: left;
+      margin: 30rpx 30rpx 30rpx 0;
+    }
+
+    .item:first-child{
+      margin-left: 40rpx;
+    }
+  }
+
+  .block_content {
+    padding: 38rpx 22rpx;
+    .process {
+      font-size: 20rpx;
+      margin: 0 auto;
+      border: 1px solid #999999;
+      padding: 10rpx;
+      border-radius: 200px;
+      text-align: center;
+      margin-bottom: 25rpx;
+      color: #808080;
+    }
+    .doc {
+      color: #808080;
+      font-size: 26rpx;
+      line-height: 30rpx;
+    }
+  }
+  .table {
+    margin: 0 auto;
+    margin-top: -24rpx;
+    .th {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 24rpx;
+    }
+    .tr {
+      font-size: 26rpx;
+      color: #808080;
+      text-align: left;
+      flex: 1;
+    }
+  }
+}
+.commont_box{
+  background: #fff;
+  margin-bottom: 20rpx;
+
+  .more {
+
+    padding: 30rpx 0;
+    
+    .allComment {
+      width: 230rpx;
+      height: 50rpx;
+      line-height: 50rpx;
+      border: 1px solid #eee;
+      border-radius: 25rpx;
+      margin: 0 auto;
+      text-align: center;
+    }
+  }
+}
+.bottom_space{
+  height: 100rpx;
+  background-color: #fff;
+}
+.detail-bottom {
+  width: 100%;
+  border-top: 1px solid #ededed;
+  position: fixed;
+  bottom: 0;
+  background: #fff;
+  z-index: 1001;
+  .bottom-box {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    position: relative;
+    .contact {
+      width: 100rpx;
+      height: 80rpx;
+      margin: 0 auto;
+      position: absolute;
+      text-align: center;
+      line-height: 80rpx;
+      left: 100rpx; // 在客服上面
+      opacity: 0;
+    }
+  }
+  .sy-bottom {
+    padding: 15rpx 40rpx;
+    height: 60rpx;
+    line-height: 60rpx;
+    font-size: 36rpx;
+    width: 250rpx;
+    text-align: center;
+  }
+  .btn_order {
+    background: #ff0000;
+    color: #fff;
+  }
+  .btn_cart {
+    color: #fff;
+    background: #404040;
+  }
+  .order_color {
+    background: #A9A9A9;
+    color: #fff;
+  }
+  .cart_color {
+    color: #fff;
+    background: #A9A9A9;
+  }
+  .item:first-child {
+    border-right: 1px solid #efefef;
+  }
+  .item {
+    text-align: center;
+    width: 120rpx;
+    .doc {
+      font-size: 24rpx;
+      width: 120rpx;
+
+      text-align: center;
+    }
+  }
+  .selec_active {
+    .doc {
+      color: #ff4856;
+    }
+    .iconfont {
+      color: #ff4856;
+    }
+  }
+}
+
+.over_model {
+  position: fixed;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 999;
+  width: 100%;
+  height: 100%;
+  top: 0;
+}
+
+.head_box {
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid #efefef;
+  padding-bottom: 26rpx;
+  .img_wrap {
+    height: 200rpx;
+    width: 200rpx;
+    background: #000;
+  }
+  .goods_img {
+    height: 200rpx;
+    width: 200rpx;
+    background: #fff;
+  }
+  .product_wrap {
+    padding: 20rpx;
+  }
+  .product_name {
+    color: #666;
+  }
+  .price {
+    color: #e11500;
+    font-size: 36rpx;
+    padding-top: 32rpx;
+  }
+}
+
+.rule_box {
+  border-bottom: 1px solid #efefef;
+  padding-bottom: 26rpx;
+  .title {
+    color: #4c4c4c;
+    font-size: 32rpx;
+    margin-top: 10rpx;
+  }
+  .items {
+    display: flex;
+    flex-wrap: wrap;
+    margin-top: 5rpx;
+    margin-left: -20rpx;
+  }
+  .item {
+    padding: 15rpx 28rpx;
+    background: #e6e6e6;
+    color: #000;
+    margin-left: 20rpx;
+    margin-top: 10rpx;
+    border-radius: 10rpx;
+  }
+  .active {
+    background: #ed394a;
+    color: #fff;
+  }
+}
+
+.num_box {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15rpx 0rpx;
+  .title {
+    color: #4c4c4c;
+    font-size: 32rpx;
+  }
+}
+
+.buy-num {
+  width: 170rpx;
+  height: 48rpx;
+  line-height: 48rpx;
+  display: flex;
+  font-size: 24rpx;
+  text-align: center;
+  .jian-btn {
+    width: 48rpx;
+    height: 100%;
+    border-left: 1rpx solid #ccc;
+    border-bottom: 1rpx solid #ccc;
+    border-top: 1rpx solid #ccc;
+    border-bottom-left-radius: 6rpx;
+    border-top-left-radius: 6rpx;
+  }
+  .jian-btn.disabled {
+    background-color: #f5f5f9;
+    border-left: 1rpx solid #eee;
+    border-bottom: 1rpx solid #eee;
+    border-top: 1rpx solid #eee;
+    color: #ccc;
+  }
+  .jia-btn {
+    width: 48rpx;
+    height: 100%;
+    border-right: 1rpx solid #ccc;
+    border-bottom: 1rpx solid #ccc;
+    border-top: 1rpx solid #ccc;
+    border-bottom-right-radius: 6rpx;
+    border-top-right-radius: 6rpx;
+  }
+  .jia-btn.disabled {
+    background-color: #f5f5f9;
+    border-right: 1rpx solid #eee;
+    border-bottom: 1rpx solid #eee;
+    border-top: 1rpx solid #eee;
+    color: #ccc;
+  }
+  input {
+    width: 68rpx;
+    height: 48rpx;
+    min-height: 48rpx;
+    text-align: center;
+    font-size: 24rpx;
+    border: 1rpx solid #ccc;
+  }
+}
+
+.panle_model {
+  position: fixed;
+  height: 0rpx;
+  width: 100%;
+  z-index: 1002;
+  background: #fff;
+  bottom: 0;
+}
+
+.model_content {
+  padding: 20rpx;
+  position: relative;
+}
+
+.colse_model {
+  position: absolute;
+  right: 10rpx;
+  top: 10rpx;
+  .icon-close {
+    color: #e11500;
+    font-size: 32rpx;
+  }
+}
+
+.comfire_btn {
+  height: 100rpx;
+  line-height: 100rpx;
+  width: 100%;
+  background: #ff6e30;
+  text-align: center;
+  color: #fff;
+  position: absolute;
+  bottom: 0;
+  z-index: 10003;
+}
+
+.button-more-cmment {
+  font-size: 28rpx;
+  height: 55rpx;
+  line-height: 55rpx;
+  text-align: center;
+  margin: 20rpx auto;
+  width: 200rpx;
+  -moz-border-radius: 10rpx;
+  /* Firefox */
+  -webkit-border-radius: 10rpx;
+  /* Safari 和 Chrome */
+  border-radius: 10rpx;
+  /* Opera 10.5+, 以及使用了IE-CSS3的IE浏览器 */
+  color: #ff4856;
+  border: 1px solid #ff4856;
+}
+
+.detail_attributes{
+  width:680rpx;
+  margin:30rpx auto;
+  border-top:1px solid #ddd;
+  .attributes_item{
+    line-height: 70rpx;
+    display:flex;
+    border-bottom: 1px solid #ddd;
+    border-right: 1px solid #ddd;
+    .detail_key{
+      background-color: #efefef;
+      width: 220rpx;
+      padding:0 30rpx;
+      border-right: 1px solid #ddd;
+      border-left: 1px solid #ddd;
+    }
+    .detail_value{
+      background-color:#fff;
+      padding:0 30rpx;
+      width: 460rpx;
+    }
+  }
+}
+
+.html_detail{
+  padding:0 30rpx 30rpx 30rpx;
+  background-color: #fff;
+
+}
+
+.bid_top{
+  display: flex;
+  .bid_status{
+    line-height: 70rpx;
+    width: 250rpx;
+    background-color: #ff0000;
+    color:#fff;
+    text-align: center;
+  }
+  .bid_time_count{
+    background-color: #404040;
+    color: #fff;
+    line-height: 70rpx;
+    width:500rpx;
+    text-align: center;
+  }
+}
+.bid_log{
+  margin-bottom: 15rpx;
+  background-color: #fff;
+  .block{
+    border-bottom: 1px solid #ddd;
+  }
+  .log_item:nth-child(odd){
+    background-color: #f4f6f8;
+  }
+  .log_item{
+    display: flex;
+    text{
+      line-height: 70rpx;
+    }
+    .item_icon{
+      width: 150rpx;
+      text-align: center;
+      text{
+        font-size: 26rpx;
+      }
+    }
+    .item_price{
+      width: 300rpx;
+      text-align: center;
+    }
+    .item_num{
+      width: 300rpx;
+      text-align: right;
+      padding-right: 30rpx;
+    }
+
+  }
+}
+.bid_1st{
+  text{
+    color:#ff0000;
+  }
+}
+
+.model_info{
+  display:flex;
+  height:90rpx;
+  .model_label{
+    height: 90rpx;
+    line-height: 70rpx;
+    width: 210rpx;
+    text-align: right;
+  }
+  .model_input{
+    line-height:70rpx;
+    display:flex;
+    input{
+      border: 1px solid #ddd;
+      height: 64rpx;
+      width: 350rpx;
+      margin-right: 10rpx;
+    }
+  }
+}
+.bid_btn{
+  width: 600rpx;
+  border: 1px solid #ff0000;
+  background-color: #ff0000;
+  border-radius:2px;
+  color: #fff;
+  text-align: center;
+  height: 80rpx;
+  line-height: 80rpx;
+  margin: 30rpx auto 0 auto;
+}
+.pay_err{
+  color:#ff0000;
+  padding-left: 80rpx;
+  padding-right: 80rpx;
+  line-height: 50rpx;
+  font-weight: bold;
+}
+.buy_quantity{
+  text-align: right;
+  line-height: 70rpx;
+}
+.bid_quantity{
+  font-size:24rpx;
+  padding-left:210rpx;
+  margin:-15rpx 0 20rpx 0;
+}
+</style>

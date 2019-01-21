@@ -1,0 +1,200 @@
+<!--地址管理-->
+<template>
+  <!--绑定交易商账户-->
+  <view wx:if="{{bestAccount.isBind === '0'}}">
+    <view class="account-name">绑定交易商账户</view>
+    <form bindsubmit="formSubmit">
+      <view class="account-panel">
+        <view class="input-panel">
+          <text>交易商账户ID</text>
+          <input type="text" name="bestUserId" placeholder="请输入绑定账户" />
+        </view>
+        <view class="input-panel">
+          <text>资金支付密码</text>
+          <input type="text" name="bestPassword" password="true" placeholder="请输入密码" />
+        </view>
+        <view class="input-panel">
+          <text>有效证件号码</text>
+          <input type="text" name="idCard" placeholder="请输入证件号码" />
+        </view>
+      </view>
+      <view class="comfire-btn">
+        <button class="button" formType="submit">绑定账户</button>
+      </view>
+    </form>
+  </view>
+
+  <!--解除绑定-->
+  <view wx:if="{{bestAccount.isBind === '1'}}">
+    <view class="account-name">解除绑定</view>
+    <form bindsubmit="formSubmit">
+      <view class="account-panel">
+        <view class="input-panel">
+          <text>交易商账户ID</text>
+          <text>{{bestAccount.bestUserId}}</text>
+        </view>
+        <view class="input-panel">
+          <text>有效证件号码</text>
+          <text>{{bestAccount.idCard}}</text>
+        </view>
+        <view class="input-panel">
+          <text>登录密码</text>
+          <input type="text" name="bestPassword" password="true" placeholder="请输入登录密码" />
+        </view>
+      </view>
+      <view class="comfire-btn">
+        <button class="button" formType="submit">解除绑定</button>
+      </view>
+    </form>
+  </view>
+</template>
+<script>
+
+  import wepy from 'wepy';
+  import api from "../api/api";
+  import tip from '@/utils/tip';
+
+
+  export default class BindAccount extends wepy.page {
+    config = {
+      navigationBarTitleText: '资金账号管理',
+    };
+
+    data = {
+      bestState: false,
+      bestAccount: {},
+    };
+
+    components = {};
+
+    /**
+     * 检测BEST绑定状态
+     * @returns {Promise<void>}
+     */
+    async bestStateCheck() {
+      const json = await api.bestStateCheck();
+      if (json.data.stateCode === 0) {
+        this.bestAccount = json.data.data;
+      } else {
+        tip.error(json.data.message);
+      }
+      this.$apply();
+    }
+
+    /**
+     * 绑定BEST账号
+     * @param bestId
+     * @param password
+     * @param cardNo
+     * @returns {Promise<void>}
+     */
+    async bindBestUser(bestId, password, cardNo) {
+      const json = await api.bindBestUser(bestId, password, cardNo);
+      if (json.data.stateCode === 0) {
+        this.bestStateCheck();
+      } else {
+        tip.error(json.data.message);
+      }
+      this.$apply();
+    }
+
+    /**
+     * 解绑BEST账号
+     * @param password
+     * @returns {Promise<void>}
+     */
+    async unBindBestUser(password) {
+      const json = await api.unBindBestUser(password);
+      if (json.data.stateCode === 0) {
+        this.bestStateCheck();
+      } else {
+        tip.error(json.data.message);
+      }
+      this.$apply();
+    }
+
+    onLoad() {
+
+    }
+
+    onShow() {
+      let that = this;
+      that.bestStateCheck();
+    }
+
+    computed = {};
+
+    methods = {
+      formSubmit(e) {
+        let that = this;
+
+        let bestPassword = e.detail.value.bestPassword;
+
+        if (bestPassword.length === 0) {
+          tip.alert('请输入密码');
+          return false;
+        }
+        if (this.bestAccount.isBind === '0') {
+          let bestUserId = e.detail.value.bestUserId;
+          let idCard = e.detail.value.idCard;
+
+          if (bestUserId.length === 0) {
+            tip.alert('请输入交易商账户ID');
+            return false;
+          }
+          if (idCard.length === 0) {
+            tip.alert('有效证件号码');
+            return false;
+          }
+          that.bindBestUser(bestUserId, bestPassword, idCard);
+        } else {
+          tip.confirm('确认解绑账户吗？',bestPassword).then(function (bestPassword) {
+            that.unBindBestUser(bestPassword);
+          });
+        }
+
+
+      },
+    };
+
+    events = {}
+
+  }
+
+</script>
+<style lang="less">
+  .account-name {
+    height: 120rpx;
+    line-height: 120rpx;
+    color: #333;
+    font-size: 36rpx;
+    text-align: center;
+  }
+
+  .account-panel {
+    background: #ffffff;
+    padding-left: 50rpx;
+    padding-right: 50rpx;
+    .input-panel {
+      display: flex;
+      height: 120rpx;
+      align-items: center;
+      border-bottom: 1px solid #e5e5e5;
+      &:last-child {
+        border: 0;
+      }
+      text {
+        margin-right: 50rpx;
+        color: #333;
+      }
+    }
+  }
+
+  .comfire-btn {
+    padding: 70rpx 50rpx;
+    .button {
+      background: #fe9c9d;
+      color: #ffffff;
+    }
+  }
+</style>

@@ -1,0 +1,423 @@
+<template>
+  <view class="empty_cart" wx:if="{{!isLogin}}">
+    <image src="../images/empty_cart.png" class="empty_cart_img"></image>
+    <view class="empty_cart_text">还未登录，无法查看购物车信息</view>
+    <view class="shop_btn">
+      <view class="block btn_group">
+        <view class="btn get_store" @tap="goLogin">登录</view>
+      </view>
+    </view>
+  </view>
+  <view wx:else>
+    <view class="empty_cart" wx:if="{{list.length==0}}">
+      <image src="../images/empty_cart.png" class="empty_cart_img"></image>
+      <view class="empty_cart_text">购物车还是空的</view>
+      <view class="shop_btn">
+        <view class="block btn_group">
+          <view class="btn get_store" @tap="goIndex">去逛逛</view>
+        </view>
+      </view>
+    </view>
+    <view class="goodsList" wx:else>
+      <repeat for="{{list}}" key="index" item="item">
+        <view class="store_box">
+          <icon class="icon_store" type="success" color="{{allChecked[item.storeId]?'red':'#ddd'}}"
+                @tap.stop="selectAllStore({{item}})" size="20"/>
+          <navigator class="store_uri" url="/pages/store?id={{item.storeId}}">{{item.storeName}}</navigator>
+        </view>
+        <shopCartList :list.sync="item" :storageList.sync="storageList"></shopCartList>
+      </repeat>
+    </view>
+
+    <view class="jiesuan-box" wx:if="{{list.length>0}}">
+      <icon class="icon_store" type="success" color="{{isAllChecked?'red':'#ddd'}}" @tap="selectAllBtn"></icon>全选
+      <view class="left-price">合计：
+        <text>¥</text>
+        <view class="total" hidden="{{noSelect}}">
+          {{totalPrice}}
+        </view>
+      </view>
+        <view class="to-pay-btn {{noSelect?'no-select':''}}" hidden="{{!saveHidden}}" bindtap="toPayOrder">
+        去结算
+      </view>
+    </view>
+  </view>
+</template>
+<script>
+
+import wepy from 'wepy';
+import api from '@/api/api';
+import tip from '@/utils/tip';
+import {CART, LOGIN_STATE} from '@/utils/constant';
+import ShopCartList from '../components/shop_cart_list'
+
+export default class shopCart extends wepy.page {
+  config = {
+    navigationBarTitleText: '购物车',
+  }
+  components = {
+    shopCartList: ShopCartList
+  }
+  data = {
+    list: [],
+    payProducts: {},
+    noSelect: false,
+    saveHidden: true,
+    totalPrice: 0,
+    allChecked: {},
+    isAllChecked:false,
+    storageList: {},
+    isLogin: false,
+    isCheckedAll: false,//是否为全选
+  }
+
+  watch = {
+    payProducts(newValue, oldValue) {
+      let totalPrice = 0;
+      for (let i = 0; i < this.list.length; i++) {
+        let store = this.list[i];
+        let bool = 0;
+        for (let j = 0; j < store.products.length; j++) {
+          let product = store.products[j];
+          let number = newValue[product.id] || 0;
+          if (number) {
+            totalPrice += product.price * number;
+            bool++;
+          } else {
+            totalPrice -= product.price * number;
+          }
+        }
+        this.allChecked[store.storeId] = store.products.length === bool ? true : false;
+
+      }
+      this.totalPrice = totalPrice;
+
+      if(!this.isCheckedAll) this.selectAll();
+    }
+  };
+
+  //获取购物车商品列表
+  async getCartList(refreshType) {
+    let that = this;
+    let json = null;
+    // if(refreshType === 'onShow') {//onShow方法进来的
+      json = await api.reCartInfoList();
+    // }else {
+    //   let cartInfo = wepy.getStorageSync(CART) || {};
+    //   that.storageList = cartInfo;
+    //   json = await api.cartInfoList(Object.keys(cartInfo));
+    // }
+    if (json !== null && json.data.stateCode === 0) {
+      for (let i = 0; i < json.data.stores.length; i++) {
+        let store = json.data.stores[i];
+        for (let j=0;j<store.products.length;j++) {
+          let product = store.products[j];
+          this.storageList[product.id] = product.number;
+          let number = product.number;
+          if (number < product.minOrderQuan) {
+            number = product.minOrderQuan;
+          }
+          if (number > product.qty) {
+            number = product.qty;
+          }
+          let remainder = (number - product.minOrderQuan) % product.quantityInc;
+          if (remainder!==0) {
+            number = number - remainder;
+          }
+          // number = store.products[j].number;
+        }
+      }
+      wepy.setStorageSync(CART, this.storageList);
+      this.list = json.data.stores;
+      this.$apply();
+    }
+  }
+
+  //点击店铺商品全选
+  checkStore(store){
+    let checkedProduct = {};
+
+    if(this.isCheckedAll){
+      this.allChecked[store.storeId] = this.isAllChecked;
+    }else {
+      this.allChecked[store.storeId] = this.allChecked[store.storeId] === 'undefined' ? true : !this.allChecked[store.storeId];
+    }
+
+    for (let i = 0; i < store.products.length; i++) {
+      let product = store.products[i];
+      checkedProduct[product.id] = this.allChecked[store.storeId];
+      if (!this.payProducts[product.id]) {
+        this.payProducts[product.id] = this.storageList[product.id];
+      } else {
+        delete this.payProducts[product.id];
+      }
+    }
+    this.$broadcast('select-all-store',store.storeId, checkedProduct, this.isCheckedAll);
+
+    //非全选
+    if(!this.isCheckedAll) this.selectAll();
+  }
+
+  //全选
+  selectAll(){
+    let isCheckedLength = 0;
+    for(let key in this.allChecked){
+      this.allChecked[key] ? isCheckedLength++ : isCheckedLength;
+    }
+
+    this.isAllChecked = isCheckedLength === this.list.length ? true: false;
+  }
+
+  onLoad() {
+    // this.isAllChecked = false;
+    // this.isLogin = wepy.getStorageSync(LOGIN_STATE) || false;
+    // if(this.isLogin) {
+    //   this.getCartList();
+    // }
+  }
+  onShow() {
+    this.isAllChecked = false;
+    this.isLogin = wepy.getStorageSync(LOGIN_STATE) || false;
+    if(this.isLogin) {
+      this.getCartList('onShow');
+    }
+  }
+  onHide() {
+    this.$broadcast('check-cart');
+  }
+  computed = {
+
+  }
+  methods = {
+    getCartListMethod() {
+      this.getCartList();
+    },
+    /**
+     * 结算订单
+     */
+    toPayOrder() {
+      if (Object.keys(this.payProducts).length > 0) {
+        wepy.navigateTo({
+          url: "/pages/confirm_order?products=" + JSON.stringify(this.payProducts)+"&stores=" + JSON.stringify(this.allChecked)
+        });
+      } else {
+        tip.alert('请先选择商品');
+      }
+    },
+    /**
+     * 店铺内全选
+     */
+    selectAllStore(store) {
+      this.isCheckedAll = false;
+      this.checkStore(store);
+    },
+    /**
+     * 全选
+     */
+    selectAllBtn(){
+      this.isAllChecked = !this.isAllChecked;
+      this.payProducts = {};
+      this.allChecked = {};
+      this.totalPrice = 0;
+      this.isCheckedAll = true;
+
+      //所有店铺和商品都改为不选中状态
+      for (let i = 0; i < this.list.length; i++) {
+        this.$broadcast('select-all-store',this.list[i].storeId, {}, this.isCheckedAll, 'init');
+      }
+
+      for (let i = 0; i < this.list.length; i++) {
+        this.checkStore(this.list[i]);
+      }
+    },
+    goIndex() {
+      wepy.switchTab({
+        url: "/pages/home"
+      })
+    },
+    goLogin(){
+      wepy.navigateTo({
+        url: '/pages/login_type'
+      })
+    }
+  }
+  events = {
+    'query-list': () => this.getCartList(),
+    'select-product': (list, isCheckedAll) => {
+      let products = {};
+      if (list && JSON.stringify(list) !== '{}') {
+        for (let i in list) {
+          products[i] = list[i].number;
+        }
+      }
+      this.isCheckedAll = isCheckedAll;
+      this.payProducts = products;
+    },
+    'change-number': (id, number) => {
+      for (let i in this.payProducts) {
+        if (i === id) {
+          this.payProducts[i] = number;
+        }
+      }
+    }
+  }
+}
+
+</script>
+<style lang="less">
+  .goodsList {
+    padding-bottom: 110rpx;
+  }
+
+  .store_box {
+    padding: 0 23rpx;
+    background-color: #fff;
+    display: flex;
+    justify-content: space-between;
+    box-sizing: border-box;
+    align-items: center;
+    position: relative;
+    border-bottom: 1px solid #eee;
+    margin-top: 20rpx;
+
+    .icon_store {
+      position: absolute;
+      width: 100%;
+      height: 100rpx;
+      line-height: 80rpx;
+      padding-top: 40rpx;
+    }
+
+    .store_uri {
+      /*width: 160rpx;*/
+      height: 100rpx;
+      overflow: hidden;
+      background-color: #fff;
+      margin-left: 60rpx;
+      line-height: 80rpx;
+      color: #333;
+    }
+
+  }
+
+  .jiesuan-box {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    height: 100rpx;
+    line-height: 100rpx;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    border-top: 1px solid #eee;
+    background-color: #fff;
+    z-index: 9999;
+
+    .icon_store {
+      padding: 20rpx 10rpx;
+    }
+
+    .to-pay-btn {
+      width: 240rpx;
+      text-align: center;
+      line-height: 100rpx;
+      background-color: #ff0017;
+      font-size: 32rpx;
+      color: #ffffff;
+    }
+
+    .to-pay-btn.no-select {
+      background-color: #ccc;
+    }
+
+    .left-price {
+      width: 350rpx;
+      display: flex;
+      justify-content: flex-end;
+      font-size: 28rpx;
+      box-sizing: border-box;
+      align-items: center;
+
+      text {
+        color: #ff0017;
+      }
+
+    }
+
+    .total {
+      color: #ff0017;
+      font-size: 45rpx;
+      margin-left: 5rpx;
+      margin-top: -7rpx;
+    }
+  }
+
+  .all_select_box {
+    width: 200rpx;
+    height: 100%;
+    display: flex;
+    align-items: center;
+  }
+
+  .all_select {
+    flex: 1;
+    padding-left: 10rpx;
+  }
+
+  .empty_cart {
+    margin-top: 100rpx;
+
+    .shop_btn {
+      display: flex;
+      width: 100%;
+    }
+
+    .block {
+      margin: 0 auto;
+      text-align: center;
+      display: flex;
+      align-items: center;
+    }
+
+    .btn_group {
+      display: flex;
+      align-items: center;
+      padding-top: 100rpx;
+
+      .btn {
+        font-size: 30rpx;
+        padding: 22rpx 55rpx;
+        text-align: center;
+        margin: 0 auto;
+        width: 100%;
+        -moz-border-radius: 10rpx;
+        /* Firefox */
+        -webkit-border-radius: 10rpx;
+        /* Safari 和 Chrome */
+        border-radius: 10rpx;
+        /* Opera 10.5+, 以及使用了IE-CSS3的IE浏览器 */
+      }
+
+      .get_store {
+        background: #ed601b;
+        color: #fff;
+        margin-left: 1rpx;
+      }
+
+    }
+  }
+  .empty_cart_img {
+    width: 220rpx;
+    height: 177rpx;
+    display: block;
+    margin: 0 auto;
+  }
+
+  .empty_cart_text {
+    font-size: 32rpx;
+    color: #999;
+    margin-top: 20rpx;
+    text-align: center;
+  }
+
+</style>

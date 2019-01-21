@@ -1,0 +1,66 @@
+<template>
+  <view class="pos">
+    <view class="search_read_only">
+      <navigator class="search_content" open-type="navigate" url="/pages/search?p_type={{p_type}}&zoneId={{zoneId}}&cateCode={{cateCode}}&title={{title}}">
+        <i class="iconfont icon-search"></i>
+        <view class="search_input">搜索商品</view>
+      </navigator>
+    </view>
+  </view>
+</template>
+<script>
+import wepy from 'wepy';
+export default class Search extends wepy.component {
+  props={
+    optionObj: {}
+  }
+  data = {
+    p_type:'',
+    zoneId:'',
+    cateCode: '',
+    title: ''
+  }
+  events = {}
+  methods = {}
+  onLoad() {
+    if(this.optionObj != undefined) {
+      this.p_type = this.optionObj.p_type;
+      this.zoneId = this.optionObj.zoneId;
+      this.cateCode = this.optionObj.cateCode;
+      this.title = this.optionObj.title;
+    }
+    this.$apply();
+  }
+}
+
+</script>
+<style lang="less">
+  .pos {
+    position: absolute;
+    top: 0rpx;
+    left: 0;
+    right: 0;
+    .search_content {
+      margin-top: 5px;
+      background: rgba(255, 255, 255, 0.9);
+      border: 1px solid #fff;
+      .icon-search,
+      .search_input {
+        color: #333;
+      }
+
+      .icon-search {
+        margin-top: 10rpx;
+      }
+    }
+    .message {
+      display: block;
+      text-align: center;
+      margin-left: 20rpx;
+    }
+    .doc {
+      font-size: 16rpx;
+      display: block;
+    }
+  }
+</style>

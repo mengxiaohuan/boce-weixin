@@ -1,0 +1,334 @@
+<template>
+  <form bindsubmit="commentData" report-submit="true">
+
+    <!--商品评价-->
+    <repeat for="{{obj.childList}}" key="index" index="index" item="item">
+      <view class="comment_box">
+        <view class="goods-middle">
+          <image wx:if="{{item.smallPicture}}" src="{{item.smallPicture}}" @error="imgerror({{index}})"></image>
+          <image wx:else src="/images/default.png"></image>
+          <view class="info">
+            <view class="product_name">{{item.productName}}</view>
+          </view>
+        </view>
+        <view class="line">
+          对商品评分：
+          <block wx:for="{{stars}}" wx:key="index" wx:for-index="starsIndex">
+            <image class="star-image" style="left: {{item*10}}rpx" src="{{proKey[index] > item ? selectedSrc : normalSrc}}">
+              <view class="item" data-key="{{item+1}}" @tap="selectPro" data-index="{{index}}"></view>
+            </image>
+          </block>
+        </view>
+
+        <!--文本域  -->
+        <view class="comment_content">
+          <textarea class="weui-textarea" name="{{index}}Content" @input="changeProInfo" data-index="{{index}}" value="{{proInfo[index]}}" maxlength="{{proMaxLen}}" placeholder=""/>
+          <view class="weui-textarea-counter">{{proLen[index]}}/{{proMaxLen}}</view>
+        </view>
+      </view>
+    </repeat>
+
+    <!--店铺评价-->
+    <view class="comment_box">
+      <view class="order_list_top">
+        <image class="icon" src="../images/icon-store.png"></image>
+        <text class="title">{{obj.storeName}}</text>
+      </view>
+      <view class="line">
+        对商家评价：
+        <radio-group class="radio-group" @change="radioChange">
+          <label class="radio" wx:for="{{commentArray}}" wx:key="index">
+            <radio value="{{item.code}}" checked="{{item.checked}}"/>
+            {{item.name}}
+          </label>
+        </radio-group>
+      </view>
+      <view class="line">
+        对商家评分：
+        <block wx:for="{{stars}}" wx:key="index" wx:for-index="starsIndex">
+          <image class="star-image" style="left: {{item*10}}rpx" src="{{shopKey > item ? selectedSrc : normalSrc}}">
+            <view class="item" data-key="{{item+1}}" @tap="selectShop"></view>
+          </image>
+        </block>
+      </view>
+      <view class="comment_content">
+        <textarea class="weui-textarea" name="shopContent" @input="changeShopInfo" value="{{shopInfo}}" maxlength="{{shopMaxLen}}" placeholder=""/>
+        <view class="weui-textarea-counter">{{shopLen}}/{{shopMaxLen}}</view>
+      </view>
+    </view>
+
+    <!--发布按钮  -->
+    <button formType="submit" class="btn">发布</button>
+  </form>
+</template>
+<script>
+  import wepy from 'wepy';
+  import api from '@/api/api';
+  import tip from '../utils/tip';
+
+  export default class CommentAdd extends wepy.page {
+    config = {
+      navigationBarTitleText: "评价晒单",
+    }
+    data = {
+      orderId: '',
+      obj: {},
+      proInfo: [],
+      proLen: [],
+      proMaxLen: 100,
+      shopInfo: '',
+      shopLen: 0,
+      shopMaxLen: 100,
+      commentArray: [{name:"好评",code:1,checked:true},{name:"中评",code:2},{name:"差评",code:3}],
+      shopRadio: 1,//对商家评价
+      stars: [0, 1, 2, 3, 4],
+      normalSrc: '../images/normal.png',
+      selectedSrc: '../images/selected.png',
+      halfSrc: '../images/half.png',
+      proKey: {},//对商品评分
+      shopKey: 0,//对商家评分
+    }
+
+    async getOrderById(){
+      let json = await api.orderDetail(this.orderId);
+      if(json !== null && json.statusCode === 200){
+        if(json.data.stateCode === 0){
+          this.obj = json.data.data;
+          const childList = json.data.data.childList;
+          if(childList !== null && childList.length > 0){
+            for(let i=0; i<childList.length; i++){
+              this.proKey[i] = 0;
+              this.proInfo[i] = '';
+              this.proLen[i] = 0;
+            }
+          }
+        }else {
+          tip.error(json.data.message);
+        }
+      }else {
+        tip.error(json.errMsg);
+      }
+      this.$apply();
+    }
+
+    onLoad(option) {
+      this.orderId = option.orderId;
+      this.getOrderById();
+    }
+
+    methods = {
+      imgerror(index){
+        this.obj.childList[index].smallPicture = '/images/default.png';
+      },
+      // 点击星星操作 - 对商品评分
+      selectPro: function(e) {
+        let key = e.currentTarget.dataset.key,
+          index = e.currentTarget.dataset.index;
+        this.proKey[index] = key;
+      },
+      // 点击星星操作 - 对商家评分
+      selectShop: function(e) {
+        let key = e.currentTarget.dataset.key;
+        this.shopKey = key;
+      },
+      // 监听商品评价字数
+      changeProInfo(e) {
+        let that = this;
+        let value = e.detail.value,
+          len = parseInt(value.length),
+          index = e.currentTarget.dataset.index;
+        if (len > that.proMaxLen)
+          return;
+        that.proInfo[index] = value;
+        that.proLen[index] = len;
+      },
+      //监听店铺评价字数
+      changeShopInfo(e) {
+        let value = e.detail.value,
+          len = parseInt(value.length);
+        if(len > this.shopMaxLen) return;
+        this.info = value;
+        this.shopLen = len;
+      },
+      // 改变对商家评价
+      radioChange(e){
+        this.shopRadio = e.detail.value;
+      },
+      // 提交
+      async commentData(e){
+        if(this.obj.childList !== null && this.obj.childList.length > 0){
+          let msg = '',
+            proData = [];
+
+          // 验证商品评价
+          for(let i=0; i<this.obj.childList.length; i++){
+            let content = e.detail.value[i+'Content'];
+            if(this.proKey[i] === 0){
+              msg = '请对商品评分';
+            }else if(content.trim().length === 0){
+              msg = '请填写商品评价';
+            }else{
+              proData[i] = {productId:this.obj.childList[i].productId, star: this.proKey[i], content: content};
+            }
+          }
+
+          // 验证店铺评价
+          let shopContent = e.detail.value.shopContent;
+          if(this.shopKey === 0){
+            msg = '请对商家评分';
+          }else if(shopContent.trim().length === 0){
+            msg = '请填写商家评价';
+          }
+
+          if(msg){
+            tip.error(msg);
+          }else{
+            let json = await api.addComment(this.orderId, JSON.stringify(proData), this.shopRadio, this.shopKey, shopContent);
+            if(json !== null && json.data.stateCode === 0){
+              tip.success('评价成功！');
+              wepy.navigateTo({
+                url: '/pages/order'
+              });
+            }else{
+              tip.error(json.data.message);
+            }
+          }
+
+        }else{
+          tip.error('无商品可以评论');
+        }
+      }
+    };
+    events = {
+    };
+    watch = {
+    };
+
+  }
+
+</script>
+<style lang="less">
+
+  .comment_box {
+    margin-top: 10rpx;
+    padding: 20rpx 40rpx 40rpx;
+    background: #fff;
+
+    .goods-middle {
+      height: 110rpx;
+      position: relative;
+      image {
+        width: 100rpx;
+        height: 100rpx;
+        border: solid 1px #dddddd;
+        float: left;
+        position: absolute;
+      }
+      .info {
+        float: right;
+        height: 100rpx;
+        width: 540rpx;
+
+        .product_name {
+          color: #414141;
+          font-size: 26rpx;
+          height: 100rpx;
+          line-height: 50rpx;
+          width: 100%;
+          overflow: hidden;
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+        }
+      }
+    }
+
+    .order_list_top {
+      background: #ffffff;
+      height: 70rpx;
+      position: relative;
+      .icon {
+        width: 40rpx;
+        height: 40rpx;
+        position: absolute;
+        top: 20rpx;
+      }
+
+      .title {
+        font-size: 30rpx;
+        color: #666666;
+        float: left;
+        position: absolute;
+        left: 60rpx;
+        top: 20rpx;
+      }
+    }
+
+    .line {
+      height: 60rpx;
+      line-height: 60rpx;
+
+      .radio-group {
+        width: 400rpx;
+        display: inline;
+
+        .radio {
+          margin-right: 20rpx;
+
+          radio{
+            width: 25rpx;
+            .wx-radio-input {
+              width: 25rpx;
+              height: 25rpx;
+            }
+          }
+        }
+      }
+    }
+
+    .comment_content {
+      width: 100%;
+      margin: 0 auto;
+      border: 1px solid #ddd;
+
+      .weui-textarea {
+        width: 100%;
+        height: 190rpx;
+      }
+
+      .weui-textarea-counter {
+        float: right;
+      }
+    }
+
+  }
+
+  .star-image {
+    position: relative;
+    width: 40rpx;
+    height: 40rpx;
+    src: "../images/normal.png";
+    top:6rpx;
+
+    .item {
+      position: absolute;
+      width: 50rpx;
+      top: 0;
+      height: 50rpx;
+    }
+  }
+
+  .star-image-read {
+    position: relative;
+    width: 30rpx;
+    height: 30rpx;
+    src: "../images/normal.png";
+  }
+
+  .btn{
+    width: 100%;
+    background: #fe9c9d;
+    color: #fff;
+    margin: 30rpx 0;
+  }
+</style>

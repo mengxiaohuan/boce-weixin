@@ -1,0 +1,150 @@
+<template>
+  <!--tab模块-->
+  <view class="swiper-tab-pd">
+    <tab @currentTab.user="getCurrentTab" :tabList.sync="tabList" :currentTab.sync="currentTab"></tab>
+  </view>
+  <scroll-view scroll-y="true" class="swiper-item-box" style="{{'height:' + (winHeight - 31) + 'px'}}">
+    <commentList :list.sync="commentList"></commentList>
+    <!--加载更多时动画-->
+    <bottomLoadMore :show.sync="showLoading" message="正在加载"></bottomLoadMore>
+    <!--暂无数据显示-->
+    <placeholder :show.sync="is_empty" message="暂无发现数据"></placeholder>
+  </scroll-view>
+</template>
+<script>
+  import wepy from 'wepy';
+  import Tab from '@/components/tab'
+  import {SYSTEM_INFO, LOGIN_STATE, COMMENT_ALL, COMMENT_GOOD, COMMENT_MID, COMMENT_BAD} from '../utils/constant'
+  import CommentList from '@/components/comment_list'
+  import BottomLoadMore from "../components/common/bottomLoadMore"
+  import Placeholder from "../components/common/placeholder"
+  import api from '@/api/api';
+  import tip from '@/utils/tip';
+  import util from '@/utils/util';
+  export default class Comment extends wepy.page {
+    config = {
+      navigationBarTitleText: "全部评价",
+    }
+    components = {
+      tab: Tab,
+      commentList: CommentList,
+      bottomLoadMore: BottomLoadMore,
+      placeholder: Placeholder
+    }
+    data = {
+      productId:'',
+      winHeight: 0,
+      tabList: '',
+      commentList: [],
+      currentPage: 1,
+      pageSize:10,
+      pageTotal:0,
+      is_empty: false,
+      orderStatus: "A",
+      currentTab: 0,
+      //是否显示 底部loading
+      showLoading: true,
+      //防止重复加载
+      preventRepeatReuqest: false,
+
+      goodCount:0,//好评数
+      midCount:0,//中评数
+      badCount:0//差评数
+    }
+
+    async getCommentList(refresh) {
+      let that = this,
+        currentPage = that.currentPage || 1,
+        pageSize = that.pageSize || 10;
+      const json = await api.getCommentList(that.productId, null, null, currentPage, pageSize, that.currentTab);
+      if(json != null && json.data.stateCode === 0){
+        that.goodCount = json.data.goodCount;
+        that.midCount = json.data.midCount;
+        that.badCount = json.data.badCount;
+        let total = this.goodCount+this.midCount+this.badCount;
+        this.tabList = [{name:"全部", dotNum:(total)}, {name:"好评", dotNum:that.goodCount}, {name:"中评",dotNum:that.midCount}, {name:"差评",dotNum:that.badCount}]
+        if (refresh) {
+          that.commentList = json.data.data;
+        } else {
+          that.commentList = [...that.commentList, ...json.data.data];
+        }
+        that.pageTotal = Math.ceil(total/pageSize);
+      }
+      that.showLoading = false;
+      that.$apply();
+    }
+
+    onLoad(option) {
+      let that = this;
+      that.productId = option.productId;
+      that.commentList = [];
+      that.currentTab = option.commentType || COMMENT_ALL;
+      //设置滚动高度
+      let systemInfo = wepy.getStorageSync(SYSTEM_INFO);
+      that.winHeight = systemInfo.windowHeight;
+      that.$apply();
+    }
+
+    onShow() {
+      this.getCommentList(true);
+    }
+    computed = {
+
+    };
+    methods = {
+      getCurrentTab(cur, evt) {
+        this.currentPage = 1;
+        let that = this;
+        that.currentTab = cur;
+        that.getCommentList(true);
+        that.$apply();
+      },
+      /**
+       * 滑动切换tab
+       */
+      bindChange(e) {
+        let that = this;
+        that.currentTab = e.detail.current;
+        that.$apply();
+      },
+    };
+    events = {
+    };
+    watch = {
+    };
+
+    //加载更多
+    onReachBottom() {
+      let that = this;
+      that.showLoading = true;
+      //判断总页数是否大于翻页数
+      if ((that.pageTotal) > that.currentPage) {
+        //防止重复加载
+        if (that.preventRepeatReuqest) {
+          return true;
+        }
+        that.preventRepeatReuqest = true;
+        that.currentPage++;
+        that.getCommentList();
+        that.preventRepeatReuqest = false;
+      } else {
+        that.showLoading = false;
+      }
+    };
+
+  }
+
+</script>
+<style lang="less">
+  page{
+    background: #fff;
+  }
+  .swiper-tab-pd {
+    padding: 0 30rpx;
+    background: #fff;
+  }
+
+.swiper-item-box{
+  background: #fff;
+}
+</style>

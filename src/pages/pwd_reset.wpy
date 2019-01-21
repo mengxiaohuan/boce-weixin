@@ -1,0 +1,135 @@
+<!--密码重置-->
+<template>
+  <view class="container">
+
+    <form bindsubmit="formSubmit">
+      <view class="section">
+        <input name="password" class="pwd" type="text" password="true" placeholder="请输入新密码(包含6-20个字符)"/>
+      </view>
+      <view class="hr"></view>
+      <view class="section">
+        <input name="newPassword" class="pwd" type="text" password="true" placeholder="请再次输入新密码(包含6-20个字符)"/>
+      </view>
+      <view class="hr"></view>
+      <view class="btn_comfire">
+        <button class="button" formType="submit">完成</button>
+      </view>
+    </form>
+
+  </view>
+</template>
+<script>
+  import wepy from 'wepy';
+  import api from '@/api/api';
+  import tip from '@/utils/tip';
+  import {LOGIN_STATE} from '@/utils/constant';
+
+  export default class Register extends wepy.page {
+    config = {
+      navigationBarTitleText: '重置密码',
+    };
+    components = {};
+
+    data = {
+      phone: "",
+      sendMsgDisabled: false,
+      time: 60,
+      pwd:"",
+    };
+
+    onLoad(option) {
+      this.phone=option.mobile
+    }
+
+    computed = {};
+    methods = {
+      phoneInput(e) {
+        this.pwd = e.detail.value;
+      },
+      async formSubmit(e) {
+        let pwd = e.detail.value.password;
+        let newPwd = e.detail.value.newPassword;
+        if (pwd.length === 0) {
+          tip.alert("请输入新密码");
+          return false;
+        }
+
+        if (newPwd.length === 0 || pwd!==newPwd) {
+          tip.alert("两次输入的密码不一致");
+          return false;
+        }
+        let json = await api.setPwd(this.phone,pwd,newPwd);
+        if (json && json.data && json.data.stateCode === 0) {
+          tip.toast('修改成功', function () {
+            wepy.reLaunch({
+              url: "/pages/login"
+            });
+          });
+        } else {
+          tip.error(json.data.message);
+        }
+
+      }
+    }
+  }
+
+</script>
+<style lang="less">
+  page {
+    background: #fff;
+    min-height: 100%;
+  }
+
+  .container {
+    background: #fff;
+  }
+
+  .section {
+    display: flex;
+    align-items: center;
+    padding: 20rpx 40rpx;
+    background: #fff;
+
+    .pwd{
+      width: 100%;
+    }
+  }
+
+  .btn_comfire {
+    margin-top: 40rpx;
+    padding: 0 40rpx;
+
+  button {
+    background: #fe9c9d;
+    color: #ffffff;
+  }
+
+  }
+
+  .hr {
+    border-bottom: 1px solid #eee;
+    margin: 0 40rpx;
+  }
+
+  .send-code {
+    border-left: 1px solid #eee;
+    padding-left: 90rpx;
+    height: 60rpx;
+    line-height: 60rpx;
+    margin-left: 15rpx;
+    view {
+      width: 200rpx;
+    }
+  }
+
+  .footer-link {
+    display: flex;
+    padding: 40rpx 40rpx 10rpx;
+    navigator {
+      color: #fe9c9d;
+      border-bottom: 1px solid #e16670;
+      margin: 0 5rpx;
+    }
+  }
+
+</style>

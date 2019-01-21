@@ -1,0 +1,19 @@
+module.exports = {
+  trim: function (str) {
+    return typeof str === 'string' ? str.trim() : str;
+  }
+
+  formatNum: function (num) {
+    num = Number(num).toFixed(2);
+    num = (num || 0).toString();
+    var result = '',
+     numRight = num.slice(-3);
+    num = num.slice(0, -3);
+    while (num.length > 3) {
+      result = ',' + num.slice(-3) + result;
+      num = num.slice(0, num.length - 3);
+    }
+    if (num) { result = num + result; }
+    return result+numRight;
+  }
+};

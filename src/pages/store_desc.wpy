@@ -1,0 +1,162 @@
+<!--/pages/store_desc-->
+<template>
+  <view class="page">
+    <view class="card" wx:if="{{storeId > 0}}">
+      <view class="header">
+        <image class="logo" src="{{store.storeIcon}}"></image>
+        <text>{{store.storeName}}</text>
+      </view>
+      <view class="body">
+        <image class="desc-logo" src="{{store.storePic}}"></image>
+        <view class="text-content" style="{{ '' + cssMaxHeight }}">
+          <text>{{store.storeNote}}</text>
+        </view>
+        <view wx:if="{{showAll}}" class="show-all" @tap="showAllDesc">
+          <image class="icon" src="../images/icon-downward.png"></image>
+        </view>
+      </view>
+    </view>
+    <view class="list">
+      <view class="list-item">
+        <text class="label">联系卖家</text>
+        <text class="middle"></text>
+        <image class="icon" src="../images/icon-contact.png"></image>
+      </view>
+      <view class="list-item">
+        <text class="label">商家电话</text>
+        <text class="middle">{{store.storePhone}}</text>
+        <image class="icon" src="../images/icon-phone.png"></image>
+      </view>
+      <view class="list-item">
+        <text class="label">所在地区</text>
+        <text class="middle">{{store.storeArea}}</text>
+        <!--<image class="icon" src="../images/icon-location.png"></image>-->
+      </view>
+    </view>
+  </view>
+</template>
+
+<script>
+  import wepy from 'wepy'
+
+  export default class ShopDetail extends wepy.page {
+    config = {navigationBarTitleText: '店铺详情'};
+    components = {};
+    props = {};
+    data = {
+      storeId: 0,
+      store: {
+        storeArea: "",
+        storeIcon: "",
+        storeName: "",
+        storeNote: "",
+        storePhone: "",
+        storePic: ""
+      },
+      showAll: true,
+      cssMaxHeight: 'max-height: 80rpx'
+    };
+    methods = {
+      showAllDesc: function (e) {
+        this.showAll = false;
+        this.cssMaxHeight = '';
+
+      }
+    };
+    events = {};
+    computed = {};
+
+    onLoad(option) {
+      console.log(option);
+      this.storeId = option.storeId;
+      this.store = {
+        storeArea: option.storeArea,
+        storeIcon: option.storeIcon,
+        storeName: option.storeName,
+        storeNote: option.storeNote,
+        storePhone: option.storePhone,
+        storePic: option.storePic
+      }
+    }
+  }
+</script>
+<style lang="less" type="text/less" scoped>
+  .card {
+    background: #ffffff;
+    min-height: ~"570rpx";
+    padding: ~"20rpx 25rpx";
+    .header {
+      height: ~"100rpx";
+      .logo {
+        height: ~"80rpx";
+        width: ~"80rpx";
+        border-radius: 50%;
+        position: absolute;
+      }
+      text {
+        color: #666666;
+        position: absolute;
+        top: ~"30rpx";
+        font-size: ~"40rpx";
+        left: ~"120rpx";
+      }
+    }
+    .body {
+      min-height: ~"470rpx";
+      border: solid 1px #eeeeee;
+      image {
+        width: ~"700rpx";
+        height: ~"290rpx";
+      }
+      .text-content {
+        min-height: ~"80rpx";
+        overflow-y: hidden;
+        margin: ~"10rpx";
+        text {
+          display: flex;
+          font-size: ~"28rpx";
+          color: #aaaaaa;
+        }
+      }
+
+      .show-all {
+        height: ~"40rpx";
+        padding-top: ~"12rpx";
+        display: flex;
+        justify-content: space-between;
+        background: #ffffff;
+      }
+
+      .icon {
+        height: ~"18rpx";
+        width: ~"36rpx";
+        margin: 0 auto;
+      }
+    }
+  }
+
+  .list {
+    margin-top: ~"30rpx";
+    .list-item {
+      display: flex;
+      align-items: center;
+      padding: ~"20rpx";
+      height: ~"50rpx";
+      background: #ffffff;
+      border: solid 1px #eeeeee;
+      .label {
+        width: ~"200rpx";
+        display: block;
+      }
+      .middle {
+        width: ~"450rpx";
+        display: block;
+      }
+      .icon {
+        display: block;
+        width: ~"50rpx";
+        height: ~"50rpx";
+      }
+    }
+  }
+</style>

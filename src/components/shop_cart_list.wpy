@@ -1,0 +1,306 @@
+<style lang="less" type="text/less" scoped>
+  .list_box {
+    height: 200rpx;
+  }
+
+  .goods-info {
+    display: flex;
+    justify-content: space-between;
+    padding: 30rpx 0;
+    box-sizing: border-box;
+    align-items: center;
+    position: relative;
+
+    .icon_check {
+      position: absolute;
+      width: 100%;
+      height: 40rpx;
+      line-height: 50rpx;
+      margin-left: 5rpx;
+    }
+
+    .img-box {
+      width: 140rpx;
+      height: 140rpx;
+      overflow: hidden;
+      background-color: #d8d8d8;
+      margin-left: 65rpx;
+    }
+
+    .text-box {
+      width: 495rpx;
+      position: relative;
+    }
+
+    .text-box .goods-title {
+      font-size: 28rpx;
+      color: #666;
+      overflow: hidden;
+      height: 88rpx;
+      line-height: 40rpx;
+      display:-webkit-box;
+      -webkit-line-clamp:2;
+      -webkit-box-orient:vertical;
+    }
+
+    .text-box .lable {
+      font-size: 26rpx;
+      color: #999;
+      height: 38rpx;
+      line-height: 38rpx;
+      margin: 8rpx 0 25rpx 0;
+    }
+
+    .text-box .goods-price {
+      font-size: 24rpx;
+      color: #ff0017;
+      text {
+        font-size: 34rpx;
+      }
+    }
+
+    .text-box .buy-num {
+      width: 190rpx;
+      height: 48rpx;
+      line-height: 48rpx;
+      position: absolute;
+      right: 0;
+      bottom: 0;
+      display: flex;
+      /*justify-content: space-between;*/
+      font-size: 24rpx;
+      text-align: center
+    }
+
+    .text-box .buy-num .jian-btn {
+      width: 48rpx;
+      height: 100%;
+      border-bottom-left-radius: 6rpx;
+      border-top-left-radius: 6rpx;
+    }
+
+    .text-box .buy-num .jian-btn.disabled {
+      color: #ccc;
+    }
+
+    .text-box .buy-num .jia-btn {
+      width: 48rpx;
+      height: 100%;
+      border-bottom-right-radius: 6rpx;
+      border-top-right-radius: 6rpx;
+    }
+
+    .text-box .buy-num .jia-btn.disabled {
+      color: #ccc;
+    }
+
+    .text-box .buy-num input {
+      background: #ebeaee;
+      width: 100rpx;
+      height: 48rpx;
+      min-height: 48rpx;
+      text-align: center;
+      font-size: 24rpx;
+    }
+
+    .img-box .img {
+      width: 140rpx;
+      height: 140rpx;
+    }
+  }
+
+</style>
+
+<template>
+  <repeat for="{{list.products}}" key="index" index="index" item="product">
+    <view class="list_box">
+      <swipeDelete :swipeData="product" @delItem.user="handleDelItem">
+        <!-- <view class="a-goods-conts {{item.ischecked? 'active':''}}"  > -->
+        <view class="goods-info">
+          <icon class="icon_check" type="success" color="{{checkProducts[product.id]?'red':'#ddd'}}"
+                @tap.stop="selectTap({{list.storeId}}, {{product}})" size="20"/>
+          <view class="img-box">
+            <image src="{{product.imgUrl}}" class="img" mode="aspectFill" @error="imgerror({{index}})"/>
+          </view>
+          <view class="text-box">
+              <navigator url="/pages/goods_detail?id={{product.id}}" class="goods-title">
+                {{product.name}}
+              </navigator>
+            <!--  -->
+            <view class="goods-price">¥
+              <text>{{tool.formatNum(product.price)}}</text>
+            </view>
+            <view class="buy-num">
+              <view class="jian-btn {{storageList[product.id]==product.minOrderQuan? 'disabled' : ''}}" @tap="jianBtnTap({{product}}, {{index}})"
+                    data-index="{{index}}" data-id="{{product.id}}">-
+              </view>
+              <input type="number" value="{{product.number}}" disabled/>
+              <view class="jia-btn {{storageList[product.id]>=product.qty? 'disabled' : ''}}" @tap="jiaBtnTap({{product}}, {{index}})"
+                    data-index="{{index}}" data-id="{{product.id}}">+
+              </view>
+            </view>
+          </view>
+        </view>
+        <!--   </view> -->
+      </swipeDelete>
+    </view>
+  </repeat>
+</template>
+
+<script>
+  import wepy from 'wepy';
+  import SwipeDelete from './common/wepy-swipe-delete';
+  import api from '@/api/api';
+  import tip from '@/utils/tip';
+  import {CART} from '@/utils/constant';
+  import tool from '../utils/tools.wxs';
+
+  export default class ShopCartList extends wepy.component {
+
+    wxs={
+      tool:tool
+    }
+
+    props = {
+      list: [],
+      storageList: {},
+    };
+    config = {};
+    components = {
+      swipeDelete: SwipeDelete
+    };
+    data = {
+      checkProducts: {},
+      storeId: '',
+      flag:false,
+      chanage:false,
+      isCheckedAll: false
+    };
+
+    watch = {
+      checkProducts(newValue, oldValue) {
+        let checkedList = {};
+        let cartInfo = wepy.getStorageSync(CART) || {};
+        for (let i in newValue) {
+          if (newValue[i]) {
+            checkedList[i] = {number: cartInfo[i]};
+          }
+        }
+        this.$emit('select-product', checkedList, this.isCheckedAll);
+      }
+
+    };
+    async removeCartProducts(productId) {
+      let that = this;
+      const json = await api.removeCartProduct(productId);
+      if(json.data.stateCode===0){
+        wepy.showToast({
+          title: '删除成功',
+          icon: 'success',
+          duration: 3000
+        });
+        setTimeout(()=>{
+          this.hidden = true;
+      },1000);
+      }else{
+      }
+      that.$apply();
+    }
+    async updateProductNumber(productId,num) {
+      let that = this;
+      const json = await api.updateProductNum(productId,num);
+      if(json.data.stateCode===0){
+      }else{
+      }
+      that.$apply();
+    }
+    methods = {
+      imgerror(index){
+        this.list.products[index].imgUrl = '/images/default.png';
+      },
+      // 删除购物车商品
+      handleDelItem(itemData) {
+        this.removeCartProducts(itemData.id);
+        delete this.storageList[itemData.id];
+        if (this.checkProducts[itemData.id]) {
+          delete this.checkProducts[itemData.id];
+        }
+        wepy.setStorageSync('cart', this.storageList);
+
+        this.flag=false;
+        this.$emit('query-list');
+      },
+      selectTap(storeId, product) {
+        let id = product.id;
+        this.storeId = storeId;
+        this.isCheckedAll = false;
+        this.checkProducts[id] = this.checkProducts[id] ? !this.checkProducts[id] : true;
+      },
+      /**
+       * 减少按钮
+       * @param e
+       */
+      jianBtnTap(product, index) {
+        if (this.operating) {
+          return;
+        }
+        this.operating = true;
+        var id = product.id;
+        // 如果只有1件了，就不允许再减了
+        if (this.storageList[id] > product.minOrderQuan) {
+          this.updateProductNumber(id,this.storageList[id]-product.quantityInc);
+          this.storageList[id] = this.storageList[id]-product.quantityInc;
+        } else {
+          tip.error('商品不能减少了哦');
+        }
+        wepy.setStorageSync('cart', this.storageList);
+        this.list.products[index].number = this.storageList[id];
+        this.$emit('change-number',id,this.storageList[id]);
+        this.operating = false;
+      },
+      /**
+       * 增加按钮
+       * @param e
+       */
+      jiaBtnTap(product, index) {
+        if (this.operating) {
+          return;
+        }
+        this.operating = true;
+        var id = product.id;
+        // 自增最小变动单位
+        if (this.storageList[id] <product.qty) {
+          this.updateProductNumber(id,this.storageList[id] + product.quantityInc);
+          this.storageList[id] = this.storageList[id] + product.quantityInc;
+
+        } else {
+          tip.error('商品不能增加了哦');
+        }
+        wepy.setStorageSync('cart', this.storageList);
+        this.list.products[index].number = this.storageList[id];
+        this.$emit('change-number',id,this.storageList[id]);
+        this.operating = false;
+      },
+    };
+    events = {
+      'select-all-store': (storeId, checkProducts, isCheckedAll, initType) => {
+        //isCheckedAll 是否为点击“全选”按钮
+        //initType 点击“全选”按钮初始化为所有商品为不选中状态
+        if(initType === 'init') this.checkProducts = {};
+        Object.assign(this.checkProducts,checkProducts);
+        this.storeId = storeId;
+        this.isCheckedAll = isCheckedAll;
+      },
+      'check-cart':() =>{
+        this.checkProducts = {};
+        // for (let i in this.checkProducts) {
+        //   this.checkProducts[i] = false;
+        // }
+      }
+    };
+
+    onLoad() {
+      let that = this;
+    }
+  }
+</script>

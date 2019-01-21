@@ -1,0 +1,53 @@
+<!--商品列表模块-->
+<template>
+  <scroll-view scroll-y="true" class="swiper-item-box">
+    <view class="shop_line">
+      <navigator class="pro_list" wx:for="{{list}}" wx:key="item" wx:for-index='index' url="/pages/goods_detail?id={{item.id}}">
+        <view class="image_box">
+          <image src="{{item.imgUri}}" @error="imgerror({{index}})"></image>
+        </view>
+        <view class="goods">
+          <view class="title fs_28">{{item.name}}</view>
+          <view class="type fs_24">{{item.type}}</view>
+          <view class="price fs_28">￥{{tool.formatNum(item.price)}}</view>
+          <view class="product_info">
+            <view class="sale_num fs_24">销量：{{item.salesQty}}{{item.unit}}</view>
+            <button type="warn" size="mini">立即购买</button>
+          </view>
+        </view>
+      </navigator>
+    </view>
+  </scroll-view>
+</template>
+<script>
+  import wepy from 'wepy'
+  import tool from '../utils/tools.wxs';
+
+  export default class HomeHotProduct extends wepy.component {
+
+    wxs = {
+      tool: tool
+    };
+
+    props = {
+      list: [],
+    }
+
+    events = {}
+
+    methods = {
+      imgerror(index){
+        this.list[index].imgUri = '/images/default.png';
+      }
+    }
+
+    onLoad() {
+
+    }
+  }
+
+</script>
+<style lang="less">
+
+</style>
+

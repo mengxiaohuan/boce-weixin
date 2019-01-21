@@ -1,0 +1,92 @@
+<!--订单列表模块-->
+<template>
+    <repeat for="{{list.childList}}">
+      <view class="order-middle">
+        <image wx:if="{{item.smallPicture}}" src="{{item.smallPicture}}" @error="imgerror({{index}})"></image>
+        <image wx:else src="/images/default.png"></image>
+        <text class="product_name">{{item.productName}}</text>
+        <text class="price">￥{{item.unitPrice}}</text>
+        <text class="goods_num">x{{item.quantity}}</text>
+      </view>
+    </repeat>
+</template>
+<script>
+  import wepy from 'wepy'
+
+  export default class orderItem extends wepy.component {
+
+    props = {
+      list: []
+    };
+
+    data = {};
+    computed = {};
+
+    events = {};
+
+    methods = {
+      imgerror(index){
+        this.list.childList[index].smallPicture = "/images/default.png";
+      },
+
+    };
+
+    onLoad() {
+    }
+  }
+
+</script>
+<style lang="less">
+
+    .order-middle {
+      background: #FAFAFA;
+      position: relative;
+      height: 150rpx;
+      border-top: 1px solid #eee;
+
+      &:first-child{
+        border-top: 0px;
+      }
+
+      image {
+        width: 100rpx;
+        height: 100rpx;
+        position: absolute;
+        top: 20rpx;
+        left: 40rpx;
+        border: solid 1px #dddddd;
+      }
+
+      .product_name {
+        color: #414141;
+        font-size: 26rpx;
+        height: 80rpx;
+        line-height: 40rpx;
+        width: 400rpx;
+        position: absolute;
+        top: 20rpx;
+        left: 180rpx;
+        overflow: hidden;
+        display:-webkit-box;
+        -webkit-line-clamp:2;
+        -webkit-box-orient:vertical;
+      }
+      .price {
+        color: #333333;
+        font-size: 30rpx;
+        font-weight: 400;
+        position: absolute;
+        top: 20rpx;
+        right: 40rpx;
+      }
+      .goods_num {
+        font-size: 26rpx;
+        color: #888888;
+        position: absolute;
+        bottom: 30rpx;
+        right: 40rpx;
+        font-weight: bolder;
+      }
+    }
+
+</style>

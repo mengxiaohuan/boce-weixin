@@ -1,0 +1,106 @@
+<!--分类热销商品模块-->
+<template>
+  <scroll-view scroll-x="true" class="swiper-item-box">
+    <view class="shop_grid">
+      <navigator class="list" wx:for="{{list}}" wx:key="item" url="/pages/goods_detail?id={{item.id}}">
+        <view class="image_box">
+          <image src="{{item.imgUri}}" @error="imgerror({{index}})"></image>
+        </view>
+        <view class="goods">
+          <view class="product_name">{{item.name}}</view>
+          <view class="product_info">
+            <!--<view class="sale_num">销量：{{item.salesQty}}{{item.unit}}</view>-->
+            <view class="price">￥{{tool.formatNum(item.price)}}</view>
+          </view>
+        </view>
+      </navigator>
+    </view>
+  </scroll-view>
+</template>
+<script>
+import wepy from 'wepy'
+import tool from '../utils/tools.wxs'
+
+export default class ShopGridList extends wepy.component {
+
+  wxs = {
+    tool: tool
+  }
+
+  props = {
+    list: [],
+  };
+
+  events = {
+
+  };
+
+  methods = {
+    imgerror(index){
+      this.list[index].imgUri = '/images/default.png';
+    }
+  };
+
+  onLoad() {
+
+  }
+}
+
+</script>
+<style lang="less">
+.shop_grid {
+  background: #f7f7f7;
+  display: flex;
+  flex-wrap: nowrap;
+  padding-bottom: 10rpx;
+  width: 1300rpx;
+
+  .list:first-child{
+    margin-left: 0;
+  }
+
+  .list {
+    background: #fff;
+    width: 260rpx;
+    margin: 0;
+
+    .image_box {
+      text-align: center;
+
+      image {
+        width: 200rpx;
+        height: 200rpx;
+      }
+    }
+    .product_name {
+      color: #1a1a1a;
+      font-size: 24rpx;
+      overflow: hidden;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      word-break: break-all;
+      height: 70rpx;
+      line-height: 35rpx;
+    }
+    .price {
+      color: #de0000;
+      font-size: 28rpx;
+    }
+    .sale_num {
+      color: #666666;
+      font-size: 24rpx;
+      padding-left: 20rpx;
+    }
+    .goods {
+      padding: 15rpx 12rpx;
+    }
+    .product_info {
+      padding-top: 10rpx;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+  }
+}
+</style>

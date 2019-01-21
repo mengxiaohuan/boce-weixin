@@ -1,0 +1,158 @@
+<!--资金查询-->
+<template>
+  <view class="user-info">
+    <view class="avatar">
+      <open-data wx:if="{{isLogin}}" type="userAvatarUrl"></open-data>
+    </view>
+    <view class="info">
+      <view>用户名：{{userFund.name}}</view>
+      <view>交易商账号ID：{{userFund.bestId}}</view>
+    </view>
+  </view>
+  <view class="fund-info">
+    <view class="hold-fund">
+      <view class="title">账户资金</view>
+      <view class="money">
+        <text>{{userFund.balance}}</text>
+        元
+      </view>
+    </view>
+    <view class="freeze-fund">
+      <view>冻结资金</view>
+      <view>
+        <text>{{userFund.frozenFunds}}</text>
+        元
+      </view>
+    </view>
+  </view>
+</template>
+<script>
+
+  import wepy from 'wepy';
+  import api from "../api/api";
+  import tip from '@/utils/tip';
+  import util from '@/utils/util';
+  import {
+    TOKEN, LOGIN_STATE
+  } from '@/utils/constant';
+
+
+  export default class Fund extends wepy.page {
+    config = {
+      navigationBarTitleText: '资金查询',
+    };
+
+    data = {
+      isLogin: false,
+      userFund:{},
+    };
+
+    /**
+     * BEST资金余额查询
+     * @returns {Promise<void>}
+     */
+    async bestAccountBalance() {
+      let that = this;
+      const json = await api.bestAccountBalance();
+      // console.log(json);
+      if (json.data.stateCode === 0) {
+        json.data.balance = util.numberFormat(json.data.balance);
+        json.data.frozenFunds = util.numberFormat(json.data.frozenFunds);
+        that.userFund = json.data;
+      }else {
+        tip.error(json.data.message, function () {
+          if (json.data.message === '未绑定云商账号') {
+            wepy.redirectTo({
+              url: '/pages/bind_account'
+            });
+          }
+        });
+      }
+      that.$apply();
+    }
+
+    components = {};
+
+    onLoad() {
+
+    }
+
+    onShow() {
+      let that = this;
+      const login = wepy.getStorageSync(LOGIN_STATE);
+      if (typeof login === 'boolean' && login) {
+        that.isLogin = true;
+      }
+      that.bestAccountBalance();
+    }
+
+    computed = {};
+
+    methods = {};
+
+    events = {}
+
+  }
+
+</script>
+<style lang="less">
+  .user-info {
+    display: flex;
+    align-items: center;
+    height: 200rpx;
+    .avatar {
+      width: 122rpx;
+      height: 122rpx;
+      border-radius: 50%;
+      overflow: hidden;
+      margin-left: 50rpx;
+      margin-right: 50rpx;
+    }
+    .info {
+      line-height: 50rpx;
+      font-size: 34rpx;
+      view {
+        color: #8b8b8b;
+      }
+    }
+  }
+
+  .fund-info {
+    background: #ffffff;
+    padding: 40rpx;
+    .hold-fund {
+      text-align: center;
+      line-height: 95rpx;
+      border-bottom: 1px solid #d5d5d5;
+      padding-bottom: 20rpx;
+      .title {
+        color: #333333;
+        font-size: 34rpx;
+      }
+      .money {
+        color: #8b8b8b;
+        text {
+          color: #0089e7;
+          font-size: 60rpx;
+          margin-right: 10rpx;
+        }
+      }
+    }
+  }
+
+  .freeze-fund {
+    display: flex;
+    justify-content: space-between;
+    height: 100rpx;
+    line-height: 140rpx;
+    view {
+      font-size: 34rpx;
+      color: #8b8b8b;
+      text {
+        color: #333333;
+        font-size: 48rpx;
+      }
+    }
+  }
+
+</style>

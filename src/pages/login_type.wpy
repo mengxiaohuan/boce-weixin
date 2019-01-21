@@ -1,0 +1,100 @@
+<template>
+  <view class="login_type">
+    <text class="title">——— · 推荐登录方式 · ———</text>
+    <view class="btn-login">
+      <button type="primary" lang="zh_CN" @tap="onWxLogin">微信账号登录</button>
+      <button type="default" lang="zh_CN" @tap="onBOCELogin">云商账号登录</button>
+    </view>
+  </view>
+</template>
+<script>
+import wepy from 'wepy';
+import api from '../api/api';
+import tip from '../utils/tip';
+import {TOKEN, TOKEN_GENERATE_TIME, LOGIN_STATE, USER_ID, CART} from '../utils/constant';
+
+export default class LoginType extends wepy.page {
+  config = {
+    navigationBarTitleText: '登录',
+  }
+
+  data = {
+    storageList: {}
+  }
+
+  onLoad() {
+  }
+  methods = {
+    async onWxLogin(){
+      //验证是否已经绑定手机号
+      let json = await api.checkBindMobile();
+      if(json !== null && json.data.stateCode === 0){
+        if(json.data.state === 0){
+          //已经绑定手机号，直接登录
+          wepy.setStorageSync(TOKEN, json.data.token);
+          wepy.setStorageSync(TOKEN_GENERATE_TIME, new Date().getTime());
+          wepy.setStorageSync(LOGIN_STATE, json.data.stateCode === 0);
+          wepy.setStorageSync(USER_ID, json.data.userId);
+          for (let i = 0; i < json.data.stores.length; i++) {
+            let store = json.data.stores[i];
+            for (let j=0;j<store.products.length;j++) {
+              let product = store.products[j];
+              let number = store.products[j].number;
+              this.storageList[product.id] = number;
+            }
+          }
+          wepy.setStorageSync(CART, this.storageList);
+          wepy.switchTab({
+            url: "/pages/info"
+          });
+        }else if(json.data.state === -1){
+          //未绑定手机号，跳转到绑定页面
+          wepy.navigateTo({
+            url: '/pages/bind_mobile'
+          });
+        }
+      }else{
+        tip.error(json.data.message);
+      }
+    },
+    onBOCELogin(){
+      wepy.navigateTo({
+        url: '/pages/login'
+      });
+    },
+    onShareAppMessage() {
+      return {
+        title: this.navigationBarTitleText,
+        path: 'pages/login_type'
+      }
+    }
+  }
+  events = {
+
+  }
+}
+</script>
+<style lang="less">
+page {
+  height: 100%;
+}
+
+.login_type {
+  height: 100%;
+  background: #fff;
+  text-align: center;
+  padding-top: 100rpx;
+
+  .title{
+    color: #999;
+  }
+
+  .btn-login {
+    margin: 70rpx 50rpx;
+
+    button{
+      margin-top: 50rpx;
+    }
+  }
+}
+</style>

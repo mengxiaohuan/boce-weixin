@@ -1,0 +1,75 @@
+<style lang="less" type="text/less" scoped>
+  .shop_item{
+    background-color: #fff;
+  }
+.shop_list{
+  width: 720rpx;
+  margin: 0 15rpx;
+  padding: 15rpx 10rpx;
+  border-bottom: 1px solid #ddd;
+  display: flex;
+  .shop_img{
+    height: 150rpx;
+    width: 150rpx;
+    margin-right: 25rpx;
+    image{
+      height: 150rpx;
+      width: 150rpx;
+      border-radius: 50%;
+    }
+  }
+  .shop_info{
+    .shop_name{
+      color: #000;
+      font-size: 32rpx;
+    }
+  }
+  .shop_detail{
+    color: #666;
+    font-size: 24rpx;
+    margin-top: 15rpx;
+    height: 95rpx;
+    overflow: hidden;
+    line-height: 42rpx;
+  }
+}
+</style>
+
+<template>
+
+    <view class="shop_item">
+      <navigator class="shop_list" wx:for="{{list}}" wx:key="item" url="/pages/store?id={{item.storeId}}">
+        <view class="shop_img">
+          <image src="{{item.storeIcon}}"></image>
+        </view>
+        <view class="goods">
+          <view class="shop_info">
+            <view class="shop_name">{{item.storeName}}</view>
+          </view>
+          <view class="shop_detail">
+            {{item.introduction_short}}
+          </view>
+        </view>
+      </navigator>
+    </view>
+
+</template>
+
+<script>
+  import wepy from 'wepy'
+
+  export default class HomeShop extends wepy.component {
+    config = {};
+    components = {};
+    props = {
+      list:[]
+    };
+    data = {};
+    methods = {};
+    events = {};
+
+    onLoad() {
+      console.log(6546783);
+    }
+  }
+</script>

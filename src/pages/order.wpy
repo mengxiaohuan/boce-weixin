@@ -1,0 +1,427 @@
+<template>
+  <!--tab模块-->
+  <view class="swiper-tab-pd">
+    <tab @currentTab.user="getCurrentTab" :tabList.sync="tabList" :currentTab.sync="currentTab"></tab>
+  </view>
+  <scroll-view scroll-y="true" class="swiper-item-box" style="{{'height:' + (winHeight - 31) + 'px'}}"
+               bindscrolltolower="onReachBottom">
+
+    <view class="order_item">
+      <repeat for="{{orderList}}" item="item" index="index">
+        <view class="list" wx:key="index">
+          <navigator class="item_content" url="/pages/order_detail?orderId={{item.orderId}}">
+            <view class="order_list_top">
+              <image class="icon" src="../images/icon-store.png"></image>
+              <text class="title">{{item.storeName + '\t>'}}</text>
+              <text class="order-state">{{item.statusDesc}}</text>
+            </view>
+            <orderItem :list.sync="item"></orderItem>
+            <view class="order-total">
+              <text class="label">应付总额：</text>
+              <text class="total-price">￥{{item.gathering}}</text>
+              <view class="affixation">运费：￥{{item.affixation}}</view>
+            </view>
+            <hr/>
+          </navigator>
+          <view class="order-item-footer">
+            <view class="btn-group">
+              <!--未付款 || 已支付预订单首款-->
+              <view wx:if="{{item.status === '01' || item.status === '10'}}" class="btn" @tap="pay" data-id="{{item.orderId}}">{{item.payBtnText}}</view>
+              <!--已付款，未发货 || 已发货-->
+              <view wx:if="{{item.status === '02' || item.status === '06'}}" class="btn" @tap="confirmReceive" data-id="{{item.orderId}}">确认收货</view>
+              <!--代开发票-->
+              <!--<view wx:if="{{item.status === '14'}}" class="btn" @tap="confirmInvoice" data-id="{{item.orderId}}">确认发票</view>-->
+              <!--未付款 && !竞价-->
+              <view wx:if="{{item.status === '01' && item.type !== 'C'}}" class="btn" @tap.stop="cancelOrder" data-id="{{item.orderId}}">取消订单</view>
+              <!--（已付款，未发货 || 已发货） &&  不支持自提-->
+              <view wx:if="{{(item.status === '02') || (item.status === '06' && item.shipStatus === '1')}}" @tap.stop="applyRefund" data-id="{{item.orderId}}" class="btn">申请退款</view>
+              <!--用户退款 && 退款申请中-->
+              <view wx:if="{{item.serviceType === '01' && item.serviceStatus === '01'}}" class="btn" @tap.stop="cancelRefundOrder" data-id="{{item.orderId}}">取消退款</view>
+              <!--用户退款 && 微信退款申请中-->
+              <view wx:if="{{item.serviceType === '01' && item.serviceStatus === '04'}}" class="btn" @tap.stop="refunding" data-id="{{item.orderId}}">退款申请中</view>
+              <!--（已到货 || 代开发票） && 订单有商品未评价-->
+              <view wx:if="{{(item.status === '07' || item.status === '14') && item.hasComment}}" class="btn" @tap.stop="hasComment" data-id="{{item.orderId}}">我要评价</view>
+            </view>
+          </view>
+        </view>
+      </repeat>
+    </view>
+
+    <!--加载更多时动画-->
+    <bottomLoadMore :show.sync="showLoading" message="正在加载"></bottomLoadMore>
+    <!--暂无数据显示-->
+    <placeholder :show.sync="is_empty" message="暂无发现数据"></placeholder>
+  </scroll-view>
+</template>
+<script>
+import wepy from 'wepy';
+import Tab from '@/components/tab'
+import {
+  SYSTEM_INFO,
+} from '@/utils/constant';
+import OrderItem from '@/components/order_item'
+import BottomLoadMore from "../components/common/bottomLoadMore"
+import Placeholder from "../components/common/placeholder"
+import api from '@/api/api';
+import tip from '@/utils/tip';
+import util from '@/utils/util';
+export default class Order extends wepy.page {
+  config = {
+    navigationBarTitleText: "我的订单",
+  }
+  components = {
+    tab: Tab,
+    orderItem: OrderItem,
+    bottomLoadMore: BottomLoadMore,
+    placeholder: Placeholder
+  }
+  data = {
+    winHeight: 0,
+    totalCount: 0,
+    tabList: ["全部订单", "待付款", "待收货", "退款"],
+    orderList: [],
+    currentPage: 1,
+    is_empty: false,
+    orderStatus: "A",
+    currentTab: 0,
+    flag: 0,
+    //是否显示 底部loading
+    showLoading: true,
+    //防止重复加载
+    preventRepeatReuqest: false,
+  }
+
+  async getMyOrder(currentPage, size, refresh) {
+
+    let that = this;
+
+    let pageSize = size || 10;
+    const json = await api.myOrderList(currentPage || 1, pageSize, new Date().getTime(), that.orderStatus);
+    if(json && json.statusCode === 200) {
+      const result = json.data;
+      if (result.stateCode === 0) {
+        for (let i = 0; i < result.data.list.length; i++) {
+          const o = result.data.list[i];
+          o.gathering = util.numberFormat(o.gathering);
+          o.unitPrice = util.numberFormat(o.unitPrice);
+          o.totalCost = util.numberFormat(o.totalCost);
+          o.prePay = util.numberFormat(o.prePay);
+          o.paid = util.numberFormat(o.paid);
+          o.statusDesc = util.getStatusDesc(o.type, o.status, o.shipStatus);
+          if (o.type === '4') {
+            if (o.status === '01') {
+              o.payBtnText = '支付预付款';
+            } else if(o.status === '10') {
+              o.payBtnText = '支付尾款';
+            }
+          } else {
+            o.payBtnText = '支付货款';
+          }
+        }
+        if (refresh) {
+          that.orderList = result.data.list;
+        } else {
+          that.orderList = [...that.orderList, ...result.data.list];
+        }
+        that.page_total = Math.ceil(result.data.total / pageSize);
+        that.totalCount = result.data.total;
+        that.is_empty = !result.data.total;
+      } else {
+        tip.error(result.message)
+      }
+    } else {
+      if(json) {
+        tip.error(json.errMsg);
+      }
+    }
+    that.showLoading = false;
+    that.$apply();
+  }
+
+  onLoad(opts) {
+    let that = this;
+    let title = "";
+    that.orderList = [];
+    that.currentTab = opts.type ? opts.type : 0;
+    //设置滚动高度
+    let systemInfo = wepy.getStorageSync(SYSTEM_INFO);
+    that.winHeight = systemInfo.windowHeight;
+    that.$apply();
+  }
+
+  onShow() {
+    this.getMyOrder(1, 10, true);
+  }
+
+  computed = {
+
+  };
+
+  methods = {
+    getCurrentTab(cur, evt) {
+      this.currentPage = 1;
+      this.page_total = 0;
+      this.orderList = [];
+
+      let that = this;
+      that.currentTab = cur;
+      if (cur === 0) {
+        //所有订单类型
+        that.orderStatus = "A";
+        that.getMyOrder();
+      } else if (cur === 1) {
+        //未付款订单类型
+        that.orderStatus = 'P';
+        that.getMyOrder();
+      } else if (cur === 2) {
+        //待收货订单类型
+        that.orderStatus = 'D';
+        that.getMyOrder();
+      } else if (cur === 3) {
+        //退款订单类型
+        that.orderStatus = 'T';
+        that.getMyOrder();
+      }
+      that.$apply();
+    },
+    /**
+     * 滑动切换tab
+     */
+    bindChange(e) {
+
+      let that = this;
+      that.currentTab = e.detail.current;
+      that.$apply();
+    },
+    async cancelOrder(e) {
+      const orderId = e.currentTarget.dataset.id;
+      const that = this;
+      wepy.navigateTo({
+        url:"/pages/order_detail?orderId="+orderId+ "&cmd=cancelOrder"
+      });
+    },
+    /**
+     * 确认收货
+     */
+    async confirmReceive(e) {
+      const orderId = e.currentTarget.dataset.id;
+      wepy.navigateTo({
+        url: "/pages/order_detail?orderId=" + orderId + "&cmd=confirmReceive"
+      });
+    },
+    /**
+     * 确认发票
+     */
+    async confirmInvoice(e) {
+      const orderId = e.currentTarget.dataset.id;
+      wepy.navigateTo({
+        url: "/pages/order_detail?orderId=" + orderId + "&cmd=confirmInvoice"
+      });
+    },
+    /**
+     * 支付
+     */
+    async pay(e) {
+      const orderId = e.currentTarget.dataset.id;
+      wepy.navigateTo({
+        url: "/pages/order_detail?orderId=" + orderId + "&cmd=pay"
+      });
+    },
+    /**
+     * 申请退款
+     */
+    applyRefund(e){
+      const orderId = e.currentTarget.dataset.id;
+      wepy.navigateTo({
+        url: '/pages/order_refund?orderId='+orderId
+      });
+    },
+    /**
+     * 取消退款
+     * @param e
+     */
+    cancelRefundOrder(e){
+      const orderId = e.currentTarget.dataset.id;
+      wepy.navigateTo({
+        url: '/pages/order_detail?orderId='+orderId
+      });
+    },
+    /**
+     * 退款中
+     */
+    refunding(e){
+      const orderId = e.currentTarget.dataset.id;
+      wepy.navigateTo({
+        url: '/pages/order_detail?orderId='+orderId
+      });
+    },
+    /**
+     * 我要评价
+     * @param e
+     */
+    hasComment(e){
+      const orderId = e.currentTarget.dataset.id;
+      wepy.navigateTo({
+        url: '/pages/comment_add?orderId='+orderId
+      });
+    }
+  };
+  events = {
+    refreshOrderList(msg){
+      this.getMyOrder(1,10,1);
+    }
+  };
+  watch = {
+    currentTab(val) {
+    }
+  };
+
+  //加载更多
+  onReachBottom() {
+    let that = this;
+    that.showLoading = true;
+    //判断总页数是否大于翻页数
+    if ((that.page_total) > that.currentPage) {
+      //防止重复加载
+      if (that.preventRepeatReuqest) {
+        return true;
+      }
+      that.preventRepeatReuqest = true;
+      that.currentPage++;
+      if (this.currentTab === 0) {
+        //所有订单类型
+        that.orderStatus = "A";
+        that.getMyOrder(that.currentPage);
+      } else if (this.currentTab === 1) {
+        //未付款订单类型
+        that.orderStatus = 'P';
+        that.getMyOrder(that.currentPage);
+      } else if (this.currentTab === 2) {
+        //待发货订单类型
+        that.orderStatus = 'D';
+        that.getMyOrder(that.currentPage);
+      } else if (this.currentTab === 3) {
+        //退款订单类型
+        that.orderStatus = 'T';
+        that.getMyOrder(that.currentPage);
+      }
+      that.preventRepeatReuqest = false;
+    } else {
+      that.showLoading = false;
+    }
+  };
+
+}
+
+</script>
+<style lang="less">
+.swiper-tab-pd {
+  padding: ~"0 30rpx";
+  background: #fff;
+}
+
+.swiper-tab-order.active {
+  color: #FF5050;
+  border-bottom: ~"5rpx solid #FF5050";
+}
+
+.order_item {
+  padding: 10rpx 0rpx;
+  background: #F4F4F4;
+  margin-bottom: 30rpx;
+
+  .order_list_top {
+    background: #ffffff;
+    height: 80rpx;
+    position: relative;
+    .icon {
+      width: 40rpx;
+      height: 40rpx;
+      position: absolute;
+      left: 40rpx;
+      top: 20rpx;
+    }
+
+    .title {
+      font-size: 30rpx;
+      color: #666666;
+      float: left;
+      position: absolute;
+      left: 100rpx;
+      top: 20rpx;
+    }
+    .order-state {
+      color: #FF5050;
+      font-size: 24rpx;
+      position: absolute;
+      right: 24rpx;
+      top: 24rpx;
+    }
+  }
+
+  .order-total {
+    height: 70rpx;
+    text-align: right;
+    background: #ffffff;
+    padding: 10rpx 40rpx;
+    border-bottom: solid 1px #E8E8E8;
+    text {
+      color: #777777;
+      margin-left: 20rpx;
+      font-size: 26rpx;
+    }
+    .total-price {
+      color: #666666;
+      font-size: 28rpx;
+      font-weight: 300;
+    }
+    .affixation{
+      color: #777;
+      margin-left: 10rpx;
+      font-size: 24rpx;
+    }
+  }
+
+  .list {
+    background: #fff;
+    margin-top: 20rpx;
+  }
+
+  .order-item-footer {
+    background: #ffffff;
+    padding: 20rpx 30rpx 0 30rpx;
+    height: 64rpx;
+    .btn-group {
+      float: right;
+      .btn {
+        border: 1px solid #ccc;
+        float: left;
+        font-size: 24rpx;
+        padding: 0 6px;
+        margin-left: 10rpx;
+        text-align: center;
+        min-width: 100rpx;
+        height: 40rpx;
+        line-height: 40rpx;
+        -moz-border-radius: 2px;
+        /* Firefox */
+        -webkit-border-radius: 2px;
+        /* Safari 和 Chrome */
+        border-radius: 2px;
+        /* Opera 10.5+, 以及使用了IE-CSS3的IE浏览器 */
+      }
+
+      .btn-del {
+        color: #333 !important;
+        border: 1px solid #ccc !important;
+      }
+
+      .btn-pay {
+        border: 1px solid #FF5050 !important;
+        color: #FF5050 !important;
+      }
+    }
+  }
+}
+
+</style>

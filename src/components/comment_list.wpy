@@ -1,0 +1,111 @@
+<template>
+  <view wx:if="{{list.length>0}}">
+    <repeat for="{{list}}" item="item">
+      <view class="comment-list">
+        <view class="header">
+          <image src="{{item.headImage}}" class="header-img"></image>
+          <view class="name">{{item.name}}</view>
+          <rate :readonly="readonly" :key="item.appLevel"></rate>
+          <view class="time">{{item.appTime}}</view>
+        </view>
+        <view class="content">{{item.description}}</view>
+        <view class="content-child" wx:if="{{item.replyAppraisalInof}}">掌柜回复：{{item.replyAppraisalInof.description}}</view>
+      </view>
+    </repeat>
+  </view>
+  <view wx:else>
+    <view class="empty-box">
+      <i class="iconfont icon-message"></i>
+      <text class="empty-text">暂无评论</text>
+    </view>
+  </view>
+</template>
+<script>
+import wepy from 'wepy';
+
+import Rate from './rate'
+export default class CommentList extends wepy.component {
+  props = {
+    list: {
+      type: Object,
+      default: []
+    }
+  }
+  data = {
+    readonly: true
+  }
+  components = {
+    rate: Rate
+  }
+
+  onLoad() {
+
+
+  }
+  computed = {
+
+  }
+
+
+
+  methods = {
+
+  }
+  events = {
+
+  }
+}
+
+</script>
+<style lang="less">
+.empty-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #999;
+  padding-top: 30rpx;
+  .icon-message {
+    font-size: 50rpx;
+  }
+  .empty-text {
+    font-size: 26rpx;
+    padding-left: 10rpx;
+  }
+}
+
+.comment-list {
+  padding: 30rpx 30rpx;
+  border-bottom: 1rpx solid #efefef;
+  .header {
+    display: flex;
+    align-items: center;
+    .header-img {
+      width: 60rpx;
+      height: 60rpx;
+    }
+    .name {
+      font-size: 25rpx;
+      padding: 0 15rpx;
+      color: #333;
+    }
+    .time {
+      flex: 1;
+      font-size: 24rpx;
+      text-align: right;
+      color: #999;
+    }
+  }
+  .content {
+    font-size: 24rpx;
+    padding-top: 15rpx;
+    &-child {
+      font-size: 26rpx;
+      padding: 20rpx 30rpx;
+      background: #f7f7f7;
+      border-radius: 5rpx;
+      margin-top: 10rpx;
+    }
+  }
+}
+
+</style>

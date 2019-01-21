@@ -1,0 +1,173 @@
+<!--找回密码-->
+<template>
+  <view class="container">
+
+    <form bindsubmit="formSubmit">
+      <view class="section">
+        <input name="mobile" type="number" bindinput="phoneInput" placeholder="请输入手机号" maxlength="11"/>
+      </view>
+      <view class="hr"></view>
+      <view class="section">
+        <input name="code" class="code" type="text" placeholder="请输入验证码"/>
+        <view class="send-code">
+          <view @tap="sendCode">{{sendMsgDisabled ? '等待' + time + '秒' : '获取验证码'}}</view>
+        </view>
+      </view>
+      <view class="hr"></view>
+      <view class="footer-link">
+        请确保您的手机号已经注册渤海云商账号
+      </view>
+      <view class="btn_comfire">
+        <button class="button" formType="submit">下一步</button>
+      </view>
+    </form>
+
+  </view>
+</template>
+<script>
+  import wepy from 'wepy';
+  import api from '@/api/api';
+  import tip from '@/utils/tip';
+  import util from '../utils/util';
+
+  export default class Register extends wepy.page {
+    config = {
+      navigationBarTitleText: '找回密码',
+    };
+    components = {};
+
+    data = {
+      phone: "",
+      sendMsgDisabled: false,
+      time: 60,
+    };
+
+    async sendVerifyCodeSearch() {
+      const json = await api.sendVerifyCodePwd(this.phone);
+      if (json && json.data && json.data.stateCode === 0) {
+        tip.success("已发送");
+        return true;
+      } else {
+        tip.error(json.data.message);
+        return false;
+      }
+    }
+    onLoad() {
+
+    }
+
+    computed = {};
+    methods = {
+      phoneInput(e) {
+        this.phone = e.detail.value;
+      },
+      async sendCode(e) {
+        if (this.sendMsgDisabled) {
+          return;
+        }
+
+        if (this.phone.length === 0) {
+          tip.alert("输入手机号码");
+          return false;
+        }
+        if(!util.vailPhone(this.phone)){
+          tip.alert('手机号不正确');
+          return false;
+        }
+        let ret = await this.sendVerifyCodeSearch();
+        if (ret) {
+          let that = this;
+          that.sendMsgDisabled = true;
+          let interval = setInterval(() => {
+            if ((that.time--) <= 0) {
+              that.time = 60;
+              that.sendMsgDisabled = false;
+              clearInterval(interval);
+              that.$apply();
+            }
+            that.$apply();
+          }, 1000);
+        }
+      },
+      async formSubmit(e) {
+        let mobile = e.detail.value.mobile;
+        let code = e.detail.value.code;
+        if (mobile.length === 0) {
+          tip.alert("请输入手机号码");
+          return false;
+        }
+
+        if (code.length === 0) {
+          tip.alert("请输入验证码");
+          return false;
+        }
+
+        let json = await api.confirmVerifyCodePwd(mobile, code);
+        if (json && json.data && json.data.stateCode === 0) {
+          wepy.navigateTo({
+            url: '/pages/pwd_reset?mobile='+mobile
+          });
+        } else {
+          tip.error(json.data.message);
+        }
+
+      }
+    }
+  }
+
+</script>
+<style lang="less">
+  page {
+    background: #fff;
+    min-height: 100%;
+  }
+
+  .container {
+    background: #fff;
+  }
+
+  .section {
+    display: flex;
+    align-items: center;
+    padding: 20rpx 40rpx;
+    background: #fff;
+
+  }
+
+  .btn_comfire {
+    padding: 0 40rpx;
+
+  button {
+    background: #fe9c9d;
+    color: #ffffff;
+  }
+
+  }
+
+  .hr {
+    border-bottom: 1px solid #eee;
+    margin: 0 40rpx;
+  }
+
+  .send-code {
+    border-left: 1px solid #eee;
+    padding-left: 90rpx;
+    height: 60rpx;
+    line-height: 60rpx;
+    margin-left: 15rpx;
+    view {
+      width: 200rpx;
+    }
+  }
+
+  .footer-link {
+    display: flex;
+    padding: 40rpx 40rpx 10rpx;
+    navigator {
+      color: #fe9c9d;
+      border-bottom: 1px solid #e16670;
+      margin: 0 5rpx;
+    }
+  }
+
+</style>

@@ -1,0 +1,292 @@
+<template>
+  <view class="container">
+    <swiper class="swiper" indicator-active-color="{{indicatorActiveColor}}" indicator-dots="{{indicatorDots}}" autoplay="{{autoplay}}" interval="{{interval}}" duration="{{duration}}" circular="true">
+      <block wx:for="{{bannerList}}" wx:key="key">
+        <swiper-item>
+          <image src="{{item.imgUri}}" class="slide-image" @tap="goToAdvert()" ></image>
+        </swiper-item>
+      </block>
+    </swiper>
+    <searchReadonly></searchReadonly>
+    <!--<products :list.sync="zones"></products>-->
+    <view class="nav_list">
+      <navigator open-type="navigate" url="/pages/search?p_type=0&title=挂牌专区">
+        <image src="../images/icon_nav_01_new.png" class="nav_icon"></image>
+        <view class="nav_text">挂牌专区</view>
+      </navigator>
+      <!--<navigator open-type="navigate" url="/pages/search?p_type=10&title=竞拍专区">-->
+      <navigator open-type="navigate" url="">
+        <image src="../images/icon_nav_02_new.png" class="nav_icon"></image>
+        <view class="nav_text">竞拍专区</view>
+      </navigator>
+      <navigator open-type="navigate" url="/pages/liquor?zoneId=mjg&title=名酒馆">
+        <image src="../images/icon_nav_03_new.png" class="nav_icon"></image>
+        <view class="nav_text">名酒馆</view>
+      </navigator>
+      <navigator open-type="navigate" url="">
+        <image src="../images/icon_nav_04_new.png" class="nav_icon"></image>
+        <view class="nav_text">字画馆</view>
+      </navigator>
+      <navigator open-type="navigate" url="">
+        <image src="../images/icon_nav_05_new.png" class="nav_icon"></image>
+        <view class="nav_text">钱邮馆</view>
+      </navigator>
+    </view>
+    <!--热销商品-->
+    <view wx:if="{{hotProductList.length > 0}}">
+      <hotProducts :list.sync="hotProductList"></hotProducts>
+      <!--加载更多时动画-->
+      <bottomLoadMore :show.sync="showLoading" message="正在加载"></bottomLoadMore>
+    </view>
+    <view wx:else>
+      <!--暂无数据显示-->
+      <placeholder :show.sync="is_empty" message="暂无发现数据"></placeholder>
+    </view>
+
+    <!--<shops :list.sync="shopList"></shops>-->
+    <!--发现好商品模块-->
+    <!--<discover :list.sync="discoverList"></discover>-->
+    <!--加载更多时动画-->
+    <!--<bottomLoadMore :show.sync="showLoading" message="正在加载"></bottomLoadMore>-->
+    <!--暂无数据显示-->
+    <!--<placeholder :show.sync="is_empty" message="暂无发现数据"></placeholder>-->
+    <!--弹屏  types:0 图片  1：领红包   show 是否显示  @close 关闭回调  @callback 点击图片回调 或确定回调-->
+    <!--<bombscreen :types.sync="tps" :show.sync="is_show_alert" @close.user="closeAlert" @callback.user="alertCallback"></bombscreen>-->
+  </view>
+</template>
+<script>
+import wepy from 'wepy';
+import api from '@/api/api';
+import tip from '@/utils/tip'
+
+import SearchReadonly from "@/components/search-readonly"
+import BottomLoadMore from "@/components/common/bottomLoadMore"
+import Placeholder from "@/components/common/placeholder"
+// import HomeProduct from '@/components/home_product'
+import HomeHotProduct from '@/components/home_hotproduct'
+// import HomeShop from '@/components/home_shop'
+
+export default class Home extends wepy.page {
+  config = {
+    navigationBarTitleText: '渤海云商',
+  }
+
+  components = {
+    searchReadonly: SearchReadonly,
+    bottomLoadMore: BottomLoadMore,
+    placeholder: Placeholder,
+    // bombscreen: Bombscreen,
+    // products: HomeProduct,
+    hotProducts: HomeHotProduct
+    // shops: HomeShop
+  }
+  data = {
+    indicatorDots: true,
+    autoplay: true,
+    interval: 3000,
+    duration: 1000,
+    indicatorActiveColor: "#fff",
+    discoverList: [],
+    //是否有数据
+    is_empty: false,
+    //当前页面
+    currentPage: 1,
+    //总页数
+    page_total: 0,
+    //是否显示 底部loading
+    showLoading: true,
+    //防止重复加载
+    preventRepeatReuqest: false,
+    //广告列表
+    adList: [],
+    tps: 0,
+    is_show_alert: false,
+
+    //商品列表
+    // productList:[],
+    // shopList:[],
+    bannerList:[],
+    // zones:[]
+    hotProductList:[]
+  }
+
+  //获取banner
+  async getBannerList() {
+    const json = await api.getHomeBanner();
+    if(json){
+      // console.log(json);
+      this.bannerList = json.data.banners;
+      this.$apply();
+    }
+  }
+
+  //获取热门商品
+  async getHotProductList(loadMore, currentPageNo, pageSize){
+    let that = this,
+      page = currentPageNo || 1,
+      size = pageSize || 10,
+      isLoadMore = loadMore || false;
+    const json = await api.getHomeHotProduct(page, size);
+    if(json.data.stateCode == 0){
+      that.page_total = Math.ceil(json.data.totalSize/size);
+      if(json.data.products == 0){
+        that.is_empty = false;
+      }else {
+        if (isLoadMore) {
+          that.hotProductList.push(...json.data.products);
+          this.showLoading = false;
+        } else {
+          that.hotProductList = json.data.products;
+        }
+      }
+    }else {
+      tip.error(json.data.message+"");
+    }
+
+    this.$apply();
+  }
+
+  //专区商品列表
+  // async getProductList() {
+  //   let that = this;
+  //   const json = await api.getHomeZone();
+  //   // console.log(json);
+  //   if(json){
+  //
+  //     /*for(let i=0;i<json.data.zones.length;i++){
+  //       for(let j=0;j<json.data.zones[i].products.length;j++){
+  //         that.productList.push(json.data.zones[i].products[j])
+  //       }
+  //     }*/
+  //     that.zones = json.data.zones;
+  //     that.$apply();
+  //     that.showLoading = false;
+  //   }
+  //   console.log(that.zones);
+  // }
+
+  //店铺列表
+  // async getShopList() {
+  //   let that = this;
+  //   const json = await api.storeList();
+  //   console.log(json);
+  //   if(json){
+  //     that.shopList = json.data.stores;
+  //     console.log(that.shopList);
+  //     for(let i of that.shopList){
+  //       if(i.introduction.length>=50){
+  //         i.introduction_short =i.introduction.substring(0,40)+'...'
+  //       }else{
+  //         i.introduction_short =i.introduction
+  //       }
+  //     }
+  //
+  //     that.$apply();
+  //     that.showLoading = false;
+  //   }
+  // }
+
+  onLoad() {
+
+  }
+
+  onShow() {
+    // this.shopList = [];
+    // this.getProductList();
+    // this.getShopList();
+    this.currentPage = 1;
+    this.getBannerList();
+    this.getHotProductList();
+  }
+  computed = {}
+  methods = {
+    goToAdvert(url) {
+      // console.log("url===" + url);
+      if (url.length == 0) {
+        return;
+      }
+      wepy.navigateTo({
+        url: url
+      })
+    },
+    onShareAppMessage: function(res) {
+
+    },
+    alertCallback() {
+      tip.alert('跳转');
+    },
+    closeAlert() {
+     // tip.alert('关闭');
+    }
+  }
+  events = {}
+  //加载更多
+  onReachBottom() {
+    let that = this;
+    that.showLoading = true;
+    // console.log(that.page_total + "===" + that.currentPage);
+    //判断总页数是否大于翻页数
+    if ((that.page_total) > that.currentPage) {
+      //防止重复加载
+      if (that.preventRepeatReuqest) {
+        return true;
+      }
+      that.preventRepeatReuqest = true;
+      that.currentPage++;
+      // that.getDiscoverList(that.currentPage);
+      that.getHotProductList(true, that.currentPage);
+      that.preventRepeatReuqest = false;
+    } else {
+      that.showLoading = false;
+    }
+  };
+}
+
+</script>
+<style lang="less">
+.swiper {
+  height: 348rpx;
+}
+
+.slide-image {
+  width: 100%;
+  height: 100%;
+}
+
+.nav_list {
+  border-top: 15rpx solid #f7f7f7;
+  border-bottom: 15rpx solid #f7f7f7;
+  color: #404040;
+  display: flex;
+  font-size: 26rpx;
+  justify-content: space-between;
+  padding: 25rpx 40rpx 17rpx;
+  navigator {
+    text-align: center
+  }
+  .nav_icon {
+    height: 70rpx;
+    margin: 0 auto;
+    width: 70rpx;
+    margin-bottom: 14rpx;
+  }
+  .nav_text {
+    font-size: 24rpx;
+    width: 120rpx;
+  }
+}
+
+.recommend-title {
+  padding: 40rpx 0;
+  text-align: center;
+  color: #333;
+}
+
+.product_name{
+  font-size: 36rpx;
+  line-height: 40rpx;
+  padding: 15rpx 0 0 15rpx;
+  background-color: #f7f7f7;
+}
+
+</style>
